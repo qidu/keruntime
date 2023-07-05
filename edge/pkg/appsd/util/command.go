@@ -38,26 +38,13 @@ func StartProcess(path, args string) error {
 }
 
 func StopProcess(path string) error {
-	//	args = strings.TrimSpace(args)
 	processes, err := process.Processes()
 	if err != nil {
 		return err
 	}
 	for _, process := range processes {
 		exePath, _ := process.Exe()
-		/*cmd, _ := process.Cmdline()
-		cmds := strings.Split(cmd, " ")
-		cmdPath := cmds[0]
-		cmdArgs := ""
-		if len(cmds) > 1 {
-			cmdArgs = cmds[1]
-		} */
-		/*if err != nil {
-			return err
-		} */
-		//klog.Infof("-----before process cmdpath:%s, cmdargs:%s, path:%s,args:%s", cmdPath, cmdArgs, path, args)
 		if exePath == path {
-			//	klog.Infof("-----after process cmdpath:%s, cmdargs:%s, path:%s,args:%s", cmdPath, cmdArgs, path, args)
 			isRunning, err := process.IsRunning()
 			if err != nil {
 				return err
@@ -74,4 +61,3 @@ func StopProcess(path string) error {
 	klog.Infof("stop process:%v success", path)
 	return nil
 }
-
