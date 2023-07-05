@@ -119,14 +119,33 @@ func (dc *DownstreamController) syncConfigMap() {
 				klog.Warningf("config map event type: %s unsupported", e.Type)
 				continue // continue to next select
 			}
+			var nodes []string
+			labels := configMap.ObjectMeta.Labels
+			appName := ""
 
-			nodes := dc.lc.ConfigMapNodes(configMap.Namespace, configMap.Name)
+			if labels != nil && len(labels) != 0 {
+				if configType, ok := labels[constants.ConfigType]; ok {
+					if configType == constants.Native {
+						nodes = []string{labels[constants.NodeName]}
+						appName = labels[constants.AppName]
+					}
+				}
+			}
+
+			if nodes == nil {
+				nodes = dc.lc.ConfigMapNodes(configMap.Namespace, configMap.Name)
+			}
+
 			if e.Type == watch.Deleted {
 				dc.lc.DeleteConfigMap(configMap.Namespace, configMap.Name)
 			}
 			klog.V(4).Infof("there are %d nodes need to sync config map, operation: %s", len(nodes), e.Type)
 			for _, n := range nodes {
-				resource, err := messagelayer.BuildResource(n, configMap.Namespace, model.ResourceTypeConfigmap, configMap.Name)
+				resourceID := configMap.Name
+				if appName != "" {
+					resourceID = resourceID + commonconstants.ResourceSep + appName
+				}
+				resource, err := messagelayer.BuildResource(n, configMap.Namespace, model.ResourceTypeConfigmap, resourceID)
 				if err != nil {
 					klog.Warningf("build message resource failed with error: %s", err)
 					continue

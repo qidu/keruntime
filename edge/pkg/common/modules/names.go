@@ -3,6 +3,8 @@ package modules
 const (
 	// EdgedModuleName name
 	EdgedModuleName = "edged"
+	// AppsdModuleName name
+	AppsdModuleName = "appsd"
 	// EventBusModuleName name
 	EventBusModuleName = "eventbus"
 	// ServiceBusModuleName name
