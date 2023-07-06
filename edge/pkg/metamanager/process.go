@@ -341,6 +341,7 @@ func (m *metaManager) processQuery(message model.Message) {
 			resp := message.NewRespByMessage(&message, *metas)
 			resp.SetRoute(modules.MetaManagerModuleName, resp.GetGroup())
 			sendToAppsd(resp, message.IsSync())
+			return
 		}
 		m.processRemote(message)
 		return

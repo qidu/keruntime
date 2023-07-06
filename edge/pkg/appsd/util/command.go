@@ -3,10 +3,17 @@ package util
 import (
 	"bytes"
 	"os/exec"
+	"syscall"
+	"time"
 
 	"github.com/shirou/gopsutil/v3/process"
 	"k8s.io/klog/v2"
 )
+
+const (
+	processShutdownTimeout = 15
+)
+
 
 func CheckCmdExists(cmd string) (bool, error) {
 	_, err := exec.LookPath(cmd)
@@ -17,7 +24,7 @@ func CheckCmdExists(cmd string) (bool, error) {
 	return true, nil
 }
 
-func StartProcess(path, args string) error {
+func StartProcess(path string, args string) error {
 	var err error
 	if ok, err := CheckCmdExists(path); !ok {
 		return err
@@ -42,20 +49,42 @@ func StopProcess(path string) error {
 	if err != nil {
 		return err
 	}
-	for _, process := range processes {
-		exePath, _ := process.Exe()
+	
+	var process *process.Process 
+	for _, p := range processes {
+		exePath, _ := p.Exe()
 		if exePath == path {
-			isRunning, err := process.IsRunning()
-			if err != nil {
-				return err
-			}
-			if isRunning {
-				err = process.Kill()
-				if err != nil {
-					return err
-				}
-			}
+			process = p
 			break
+		}
+	}
+
+	var isRunning bool
+	retry := 3
+Loop:
+	for retry > 0 {
+		isRunning, _ = process.IsRunning()
+		if !isRunning {
+			break
+		}
+		err = syscall.Kill(int(process.Pid), syscall.SIGTERM)
+		if err != nil {
+			return err
+		}
+		// Wait up to 15secs for it to stop
+		for i := time.Duration(0); i < processShutdownTimeout; i += time.Second {
+			isRunning, _ = process.IsRunning()
+			if !isRunning {
+				break Loop
+			}
+			time.Sleep(time.Second)
+		}
+		retry--
+	}
+	if isRunning {
+		err = syscall.Kill(int(process.Pid), syscall.SIGKILL)
+		if err != nil {
+			return err
 		}
 	}
 	klog.Infof("stop process:%v success", path)

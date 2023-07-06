@@ -58,7 +58,7 @@ func UpdateMeta(meta *Meta) error {
 
 // InsertOrUpdate insert or update meta
 func InsertOrUpdate(meta *Meta) error {
-	_, err := dbm.DBAccess.Raw("INSERT OR REPLACE INTO meta (key, type, value) VALUES (?,?,?)", meta.Key, meta.Type, meta.Value).Exec() // will update all field
+	 _, err := dbm.DBAccess.Raw("INSERT OR REPLACE INTO meta (key, type, appname, value) VALUES (?,?,?,?)", meta.Key, meta.Type, meta.AppName, meta.Value).Exec() // will update all field
 	klog.V(4).Infof("Update result %v", err)
 	return err
 }

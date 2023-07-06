@@ -12,13 +12,6 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
-
-@CHANGELOG
-KubeEdge Authors: To create mini-kubelet for edge deployment scenario,
-This file is derived from K8S Kubelet code with reduced set of methods
-Changes done are
-1. Package edged got some functions from "k8s.io/kubernetes/pkg/kubelet/kubelet.go"
-and made some variant
 */
 
 package appsd
@@ -30,13 +23,14 @@ import (
 
 	"fmt"
 	"net/http"
-	"sync"
 	"time"
 
 	"github.com/kubeedge/beehive/pkg/core"
 	beehiveContext "github.com/kubeedge/beehive/pkg/core/context"
 	model "github.com/kubeedge/beehive/pkg/core/model"
 	appsdconfig "github.com/kubeedge/kubeedge/edge/pkg/appsd/config"
+	"github.com/kubeedge/kubeedge/edge/pkg/appsd/util"
+	"github.com/kubeedge/kubeedge/edge/pkg/common/message"
 	"github.com/kubeedge/kubeedge/edge/pkg/common/modules"
 	"github.com/kubeedge/kubeedge/pkg/apis/componentconfig/edgecore/v1alpha2"
 	v1 "k8s.io/api/core/v1"
@@ -49,15 +43,9 @@ type appsd struct {
 	enable bool
 }
 
-type serverResponse struct {
-	Code int         `json:"code"`
-	Msg  string      `json:"msg"`
-	Body interface{} `json:"body"`
-}
-
-var _ core.Module = (*appsd)(nil)
-var lock sync.Mutex
-var operationMap = make(map[string]bool)
+var (
+	_ core.Module = (*appsd)(nil)
+)
 
 // newAppsd creates new appsd object and initialises it
 func newAppsd(enable bool) *appsd {
@@ -66,7 +54,7 @@ func newAppsd(enable bool) *appsd {
 	}
 }
 
-// Register register edged
+// Register register appsd
 func Register(a *v1alpha2.Appsd) {
 	appsdconfig.InitConfigure(a)
 	appsd := newAppsd(a.Enable)
@@ -133,69 +121,48 @@ func server(stopChan <-chan struct{}) {
 }
 
 func queryConfigMapHandler(w http.ResponseWriter, req *http.Request) {
-	sResp := &serverResponse{}
 	if req.Method != http.MethodGet {
-		sResp.Code = http.StatusBadRequest
-		sResp.Msg = "only support get request method"
-		w.Write(marshalResult(sResp))
+		msg := "only support get request method"
+		util.ResponseError(http.StatusBadRequest, msg, w)
 		return
 	}
 	query := req.URL.Query()
 	appName := query.Get("appname")
 	if appName == "" {
-		sResp.Code = http.StatusBadRequest
-		sResp.Msg = "request param must have appname"
-		w.Write(marshalResult(sResp))
+		msg := "request param must have appname"
+		util.ResponseError(http.StatusBadRequest, msg, w)
 		return
 	}
-
-	msg := model.NewMessage("").BuildRouter(modules.AppsdModuleName, modules.AppsdGroup,
-		appsdconfig.Config.RegisterNodeNamespace+"/"+model.ResourceTypeConfigmap+"/"+appName, model.QueryOperation)
-
+	resource, err := message.BuildResource("", appsdconfig.Config.RegisterNodeNamespace, model.ResourceTypeConfigmap, appName)
+	msg := model.NewMessage("").BuildRouter(modules.AppsdModuleName, modules.AppsdGroup, resource, model.QueryOperation)
 	responseMessage, err := beehiveContext.SendSync(modules.MetaManagerModuleName, *msg, time.Second*10)
 	if err != nil {
-		sResp.Code = http.StatusBadRequest
-		sResp.Msg = err.Error()
-		w.Write(marshalResult(sResp))
+		util.ResponseError(http.StatusBadRequest, err.Error(), w)
 		return
 	}
 	resp, err := responseMessage.GetContentData()
 	if err != nil {
-		sResp.Code = http.StatusInternalServerError
-		sResp.Msg = err.Error()
-		w.Write(marshalResult(sResp))
+		util.ResponseError(http.StatusInternalServerError, err.Error(), w)
 		return
 	}
 
 	var data []string
 	err = json.Unmarshal(resp, &data)
 	if err != nil {
-		sResp.Code = http.StatusInternalServerError
-		sResp.Msg = err.Error()
-		w.Write(marshalResult(sResp))
+		util.ResponseError(http.StatusInternalServerError, err.Error(), w)
+		return
+	}
+	configMaps, err := formatConfigmapResp(data)
+	if err != nil {
+		util.ResponseError(http.StatusInternalServerError, err.Error(), w)
 		return
 	}
 
-	configMaps, err := formatConfigmapResp(data)
-	if err != nil {
-		sResp.Code = http.StatusInternalServerError
-		sResp.Msg = err.Error()
-		w.Write(marshalResult(sResp))
-		return
-	}
-	sResp.Code = http.StatusOK
-	sResp.Msg = "success"
-	sResp.Body = configMaps
-	w.Write(marshalResult(sResp))
+	util.ResponseSuccess(configMaps, w)
 }
 
 func (a *appsd) handleApp(msg *model.Message) {
 	// todo: optimize code
-	return
-}
-
-func marshalResult(sResp *serverResponse) (resp []byte) {
-	resp, _ = json.Marshal(sResp)
 	return
 }
 
