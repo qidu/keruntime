@@ -157,6 +157,12 @@ func NewDefaultEdgeCoreConfig() *EdgeCoreConfig {
 				TunnelServer:            net.JoinHostPort("127.0.0.1", strconv.Itoa(constants.DefaultTunnelPort)),
 				WriteDeadline:           15,
 			},
+			Appsd: &Appsd{
+				Enable:                true,
+				Server:                "127.0.0.1",
+				Port:                  9080,
+				RegisterNodeNamespace: "default",
+			},
 		},
 	}
 }

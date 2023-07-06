@@ -80,6 +80,9 @@ type Modules struct {
 	// Edged indicates edged module config
 	// +Required
 	Edged *Edged `json:"edged,omitempty"`
+	// Appsd indicates appsd module config
+	// ++Required
+	Appsd *Appsd `json:"appsd,omitempty"`
 	// EdgeHub indicates edgeHub module config
 	// +Required
 	EdgeHub *EdgeHub `json:"edgeHub,omitempty"`
@@ -975,6 +978,18 @@ type ServiceBus struct {
 	Port int `json:"port"`
 	// Timeout indicates timeout for servicebus receive mseeage
 	Timeout int `json:"timeout"`
+}
+
+// Appsd indicates the ServiceBus module config
+type Appsd struct {
+	Enable bool `json:"enable"`
+	// Address indicates address for http server
+	Server string `json:"server"`
+	// Port indicates port for http server
+	Port int `json:"port"`
+	// RegisterNodeNamespace indicates register node namespace
+	// default "default"
+	RegisterNodeNamespace string `json:"registerNodeNamespace,omitempty"`
 }
 
 // DeviceTwin indicates the DeviceTwin module config

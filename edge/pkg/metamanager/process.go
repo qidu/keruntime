@@ -54,45 +54,58 @@ func sendToEdged(message *model.Message, sync bool) {
 	}
 }
 
+func sendToAppsd(message *model.Message, sync bool) {
+	if sync {
+		beehiveContext.SendResp(*message)
+	} else {
+		beehiveContext.Send(modules.AppsdModuleName, *message)
+	}
+}
+
 func sendToCloud(message *model.Message) {
 	beehiveContext.SendToGroup(string(metaManagerConfig.Config.ContextSendGroup), *message)
 }
 
 // Resource format: <namespace>/<restype>[/resid]
 // return <reskey, restype, resid>
-func parseResource(message *model.Message) (string, string, string) {
+func parseResource(message *model.Message) (string, string, string, string) {
 	resource := message.GetResource()
 	tokens := strings.Split(resource, constants.ResourceSep)
 	resType := ""
 	resID := ""
+	appName := ""
 	switch len(tokens) {
 	case 2:
 		resType = tokens[len(tokens)-1]
 	case 3:
 		resType = tokens[len(tokens)-2]
 		resID = tokens[len(tokens)-1]
+	case 4:
+		resType = tokens[len(tokens)-3]
+		resID = tokens[len(tokens)-2]
+		appName = tokens[len(tokens)-1]
 	default:
 	}
 	if resType != model.ResourceTypeServiceAccountToken {
-		return resource, resType, resID
+		return resource, resType, resID, appName
 	}
 	var tokenReq authenticationv1.TokenRequest
 	content, err := message.GetContentData()
 	if err != nil {
 		klog.Errorf("failed to get token request from message %s, error %s", message.GetID(), err)
-		return "", "", ""
+		return "", "", "", ""
 	}
 	if err = json.Unmarshal(content, &tokenReq); err != nil {
 		klog.Errorf("failed to unmarshal token request from message %s, error %s", message.GetID(), err)
-		return "", "", ""
+		return "", "", "", ""
 	}
 
 	trTokens := strings.Split(resource, constants.ResourceSep)
 	if len(trTokens) != 3 {
 		klog.Errorf("failed to get resource %s name and namespace", resource)
-		return "", "", ""
+		return "", "", "", ""
 	}
-	return client.KeyFunc(trTokens[2], trTokens[0], &tokenReq), resType, ""
+	return client.KeyFunc(trTokens[2], trTokens[0], &tokenReq), resType, "", ""
 }
 
 // is resource type require remote query
@@ -112,7 +125,7 @@ func msgDebugInfo(message *model.Message) string {
 }
 
 func (m *metaManager) handleMessage(message *model.Message) error {
-	resKey, resType, _ := parseResource(message)
+	resKey, resType, _, appName := parseResource(message)
 	switch message.GetOperation() {
 	case model.InsertOperation, model.UpdateOperation, model.PatchOperation, model.ResponseOperation:
 		content, err := message.GetContentData()
@@ -121,9 +134,10 @@ func (m *metaManager) handleMessage(message *model.Message) error {
 			return fmt.Errorf("get message content data failed, error: %s", err)
 		}
 		meta := &dao.Meta{
-			Key:   resKey,
-			Type:  resType,
-			Value: string(content)}
+			Key:     resKey,
+			Type:    resType,
+			AppName: appName,
+			Value:   string(content)}
 		err = dao.InsertOrUpdate(meta)
 		if err != nil {
 			klog.Errorf("insert or update meta failed, message: %s, error: %v", msgDebugInfo(message), err)
@@ -180,7 +194,7 @@ func (m *metaManager) processUpdate(message model.Message) {
 	imitator.DefaultV2Client.Inject(message)
 
 	msgSource := message.GetSource()
-	_, resType, _ := parseResource(&message)
+	_, resType, _, _ := parseResource(&message)
 	if msgSource == modules.EdgedModuleName && resType == model.ResourceTypeLease {
 		if !connect.IsConnected() {
 			klog.Warningf("process remote failed, req[%s], err: %v", msgDebugInfo(&message), errNotConnected)
@@ -242,7 +256,7 @@ func (m *metaManager) processResponse(message model.Message) {
 
 func (m *metaManager) processDelete(message model.Message) {
 	imitator.DefaultV2Client.Inject(message)
-	_, resType, _ := parseResource(&message)
+	_, resType, _, _ := parseResource(&message)
 	if resType == model.ResourceTypePod && message.GetSource() == modules.EdgedModuleName {
 		// if pod is deleted in K8s, then a new delete message will be sent to edge
 		sendToCloud(&message)
@@ -318,10 +332,17 @@ func processDeletePodDB(message model.Message) error {
 }
 
 func (m *metaManager) processQuery(message model.Message) {
-	resKey, resType, resID := parseResource(&message)
+	resKey, resType, resID, _ := parseResource(&message)
 	var metas *[]string
 	var err error
 	if requireRemoteQuery(resType) && connect.IsConnected() {
+		if message.GetSource() == modules.AppsdModuleName && resType == model.ResourceTypeConfigmap {
+			metas, err = dao.QueryMetaByGroupConds(map[string]string{"type": model.ResourceTypeConfigmap, "appname": resID})
+			resp := message.NewRespByMessage(&message, *metas)
+			resp.SetRoute(modules.MetaManagerModuleName, resp.GetGroup())
+			sendToAppsd(resp, message.IsSync())
+			return
+		}
 		m.processRemote(message)
 		return
 	}

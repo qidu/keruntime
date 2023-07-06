@@ -81,6 +81,10 @@ const (
 
 	CurrentSupportK8sVersion = "v1.24.14"
 
+	AppType  	= "appType"
+	Pod         = "pod"
+	Native      = "native"
+
 	// MetaManager
 	DefaultRemoteQueryTimeout = 60
 	DefaultMetaServerAddr     = "127.0.0.1:10550"

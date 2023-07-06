@@ -3,6 +3,7 @@ package dao
 import (
 	"strings"
 
+	"github.com/astaxie/beego/orm"
 	"k8s.io/klog/v2"
 
 	"github.com/kubeedge/kubeedge/edge/pkg/common/dbm"
@@ -15,9 +16,10 @@ const (
 
 // Meta metadata object
 type Meta struct {
-	Key   string `orm:"column(key); size(256); pk"`
-	Type  string `orm:"column(type); size(32)"`
-	Value string `orm:"column(value); null; type(text)"`
+	Key     string `orm:"column(key); size(256); pk"`
+	Type    string `orm:"column(type); size(32)"`
+	AppName string `orm:"column(appname); size(256)"`
+	Value   string `orm:"column(value); null; type(text)"`
 }
 
 // SaveMeta save meta to db
@@ -56,7 +58,7 @@ func UpdateMeta(meta *Meta) error {
 
 // InsertOrUpdate insert or update meta
 func InsertOrUpdate(meta *Meta) error {
-	_, err := dbm.DBAccess.Raw("INSERT OR REPLACE INTO meta (key, type, value) VALUES (?,?,?)", meta.Key, meta.Type, meta.Value).Exec() // will update all field
+	 _, err := dbm.DBAccess.Raw("INSERT OR REPLACE INTO meta (key, type, appname, value) VALUES (?,?,?,?)", meta.Key, meta.Type, meta.AppName, meta.Value).Exec() // will update all field
 	klog.V(4).Infof("Update result %v", err)
 	return err
 }
@@ -83,6 +85,25 @@ func QueryMeta(key string, condition string) (*[]string, error) {
 		return nil, err
 	}
 
+	var result []string
+	for _, v := range *meta {
+		result = append(result, v.Value)
+	}
+	return &result, nil
+}
+
+//QueryMeta return only meta's value by many conditions, if no error, Meta not null
+func QueryMetaByGroupConds(conditions map[string]string) (*[]string, error) {
+	meta := new([]Meta)
+	conds := orm.NewCondition()
+
+	for key, conditon := range conditions {
+		conds = conds.And(key, conditon)
+	}
+	_, err := dbm.DBAccess.QueryTable(MetaTableName).SetCond(conds).All(meta)
+	if err != nil {
+		return nil, err
+	}
 	var result []string
 	for _, v := range *meta {
 		result = append(result, v.Value)
