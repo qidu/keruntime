@@ -1,0 +1,11 @@
+apiVersion: rules.kubeedge.io/v1
+kind: Rule
+metadata:
+  name: <rule_rest_to_mikustreamd_streamdrop_servicebus>
+  labels:
+    description: cloud-rest-to-streamdrop-servicebus
+spec:                                                 
+  source: "<ruleEndpoint_cloud_rest>"
+  sourceResource: { "path": "<cloud_rest_path>" }
+  target: "<ruleEndpoint_mikustreamd_streamdrop_servicebus>"
+  targetResource: { "path": "/api/v1/streamdrop"}

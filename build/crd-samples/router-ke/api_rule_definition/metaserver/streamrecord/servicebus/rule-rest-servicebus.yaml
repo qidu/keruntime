@@ -1,0 +1,11 @@
+apiVersion: rules.kubeedge.io/v1
+kind: Rule
+metadata:
+  name: rule-streamforward-rest-to-servicebus
+  labels:
+    description: test
+spec:                                                 
+  source: "ruleEndpoint-streamforward-rest"
+  sourceResource: { "path": "/api/v1/streamforward" }
+  target: "ruleEndpoint-edge-servicebus"
+  targetResource: { "path": "<target_path>"}
