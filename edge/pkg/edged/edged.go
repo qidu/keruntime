@@ -290,14 +290,30 @@ func (e *edged) handlePod(op string, content []byte, updatesChan chan<- interfac
 	var pods []*v1.Pod
 	pods = append(pods, &pod)
 
+	var info *model.Message
 	if filterPodByNodeName(&pod, e.nodeName) {
-		switch op {
-		case model.InsertOperation:
-			klog.V(4).InfoS("Receive message of adding new pods", "pods", klog.KObjs(pods))
-		case model.UpdateOperation:
-			klog.V(4).InfoS("Receive message of updating pods", "pods", klog.KObjs(pods))
-		case model.DeleteOperation:
-			klog.V(4).InfoS("Receive message of deleting pods", "pods", klog.KObjs(pods))
+		labels := pods[0].ObjectMeta.Labels
+		appType := ""
+		if labels != nil {
+			if val, ok := labels[constants.AppType]; ok {
+				appType = val
+			}
+		}
+		if appType == constants.Native && pods[0].Spec.Containers[0].Args != nil &&
+			len(pods[0].Spec.Containers[0].Args) > 0 {
+			switch op {
+			case model.InsertOperation:
+				klog.V(4).InfoS("Receive message of adding new pods", "pods", klog.KObjs(pods))
+			case model.UpdateOperation:
+				klog.V(4).InfoS("Receive message of updating pods", "pods", klog.KObjs(pods))
+			case model.DeleteOperation:
+				klog.V(4).InfoS("Receive message of deleting pods", "pods", klog.KObjs(pods))
+			}
+			info = model.NewMessage("").BuildRouter(e.Name(), e.Group(), e.namespace+"/"+model.ResourceTypePod,
+				op).FillBody(pods[0].Spec.Containers[0].Args)
+			if info != nil {
+				beehiveContext.Send(modules.AppsdModuleName, *info)
+			}
 		}
 		updates := &kubelettypes.PodUpdate{Op: kubelettypes.UPDATE, Pods: pods, Source: kubelettypes.ApiserverSource}
 		updatesChan <- *updates

@@ -112,6 +112,7 @@ const (
 	DefaultUpdateRuleStatusWorkers           = 4
 	DefaultQueryLeaseWorkers                 = 100
 	DefaultServiceAccountTokenWorkers        = 100
+	DefaultNodeDisconnectWorks				 = 4
 
 	DefaultUpdatePodStatusBuffer            = 1024
 	DefaultUpdateNodeStatusBuffer           = 1024
@@ -126,6 +127,7 @@ const (
 	DefaultDeletePodBuffer                  = 1024
 	DefaultQueryLeaseBuffer                 = 1024
 	DefaultServiceAccountTokenBuffer        = 1024
+	DefaultNodeDisconnectBuffer   			= 1024
 
 	DefaultPodEventBuffer           = 1
 	DefaultConfigMapEventBuffer     = 1
@@ -143,6 +145,9 @@ const (
 	DefaultNodeUpgradeJobStatusBuffer = 1024
 	DefaultNodeUpgradeJobEventBuffer  = 1
 	DefaultNodeUpgradeJobWorkers      = 1
+
+	//node disconnect operation
+	NodeDisConnectOperation = "disconnected"
 
 	// Resource sep
 	ResourceSep = "/"

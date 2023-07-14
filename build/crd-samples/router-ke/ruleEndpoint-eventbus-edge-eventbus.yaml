@@ -1,0 +1,9 @@
+apiVersion: rules.kubeedge.io/v1
+kind: RuleEndpoint
+metadata:
+  name: eventbus-edge-eventbus
+  labels:
+    description: edge-endpoint
+spec:
+  ruleEndpointType: "eventbus"
+  properties: {}

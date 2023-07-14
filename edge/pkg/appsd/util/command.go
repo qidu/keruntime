@@ -2,6 +2,7 @@ package util
 
 import (
 	"bytes"
+	"fmt"
 	"os/exec"
 	"syscall"
 	"time"
@@ -57,6 +58,9 @@ func StopProcess(path string) error {
 			process = p
 			break
 		}
+	}
+	if process == nil {
+		return fmt.Errorf("path %s is not exist", path)
 	}
 
 	var isRunning bool

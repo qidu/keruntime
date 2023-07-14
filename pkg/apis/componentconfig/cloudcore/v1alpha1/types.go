@@ -218,6 +218,15 @@ type EdgeController struct {
 	Buffer *EdgeControllerBuffer `json:"buffer,omitempty"`
 	// Load indicates EdgeController load
 	Load *EdgeControllerLoad `json:"load,omitempty"`
+	// NotifyNodeDisconnectURL indicates receive node disconnect notify url
+	NotifyNodeDisconnect *NotifyNodeDisconnectConfig `json:"notifyNodeDisconnectUrl"`
+}
+
+type NotifyNodeDisconnectConfig struct {
+	Schema  string `json:"schema,omitempty"`
+	Address string `json:"address,omitempty"`
+	Port    uint32 `json:"port,omitempty"`
+	Path    string `json:"path,omitempty"`
 }
 
 // EdgeControllerBuffer indicates the EdgeController buffer
@@ -285,6 +294,9 @@ type EdgeControllerBuffer struct {
 	// ServiceAccount indicates the buffer of service account token
 	// default 1024
 	ServiceAccountToken int32 `json:"serviceAccountToken,omitempty"`
+	// NodeDisconnect indicates the buffer of notify node disconnect
+	// default 1024
+	NodeDisconnect int32 `json:"nodeDisconnect,omitempty"`
 }
 
 // EdgeControllerLoad indicates the EdgeController load
@@ -340,6 +352,9 @@ type EdgeControllerLoad struct {
 	// ServiceAccountTokenWorkers indicates the load of service account token
 	// default 4
 	ServiceAccountTokenWorkers int32 `json:"ServiceAccountTokenWorkers,omitempty"`
+	// NodeDisconnectWorks indicates the load of notify node disconnect
+	// default 4
+	NodeDisconnectWorks int32 `json:"nodeDisconnectWorks"`
 }
 
 // DeviceController indicates the device controller
