@@ -18,6 +18,7 @@ package appsd
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	commonType "github.com/kubeedge/kubeedge/common/types"
@@ -104,10 +105,20 @@ func server(stopChan <-chan struct{}) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/config", queryConfigHandler)
 
-	// todo: support tls
+	certificate, err := util.CreateCertificate()
+	if err != nil {
+		klog.Errorf("create cert failed: %v", certificate)
+		return
+	}
+	config := &tls.Config{
+		Certificates: []tls.Certificate{*certificate},
+		MinVersion:   tls.VersionTLS12,
+	}
+
 	s := http.Server{
 		Addr:    fmt.Sprintf("%s:%d", appsdconfig.Config.Server, appsdconfig.Config.Port),
 		Handler: mux,
+		TLSConfig: config,
 	}
 
 	go func() {
