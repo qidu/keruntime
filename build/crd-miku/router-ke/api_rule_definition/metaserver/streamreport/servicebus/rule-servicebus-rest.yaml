@@ -1,0 +1,11 @@
+apiVersion: rules.kubeedge.io/v1
+kind: Rule
+metadata:
+  name: <metaserver_streamreport_rule_servicebus_rest>
+  labels:
+    description: edge-servicebus-to-streamforward-rest
+spec:                                                 
+  source: "<ruleEndpoint_edge_servicebus>"
+  sourceResource: { "target_url": "http://<cloud_ip>:<cloud_port>/api/v1/streamreport", "node_name": "<edge_node>" }
+  target: "<ruleEndpoint_streamreport_rest>"
+  targetResource: { "resource": "http://<cloud_ip>:<cloud_port>/api/v1/streamreport"}

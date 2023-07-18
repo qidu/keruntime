@@ -1,0 +1,11 @@
+apiVersion: rules.kubeedge.io/v1
+kind: Rule
+metadata:
+  name: <mikuagent_streamforward_rule_rest_servicebus>
+  labels:
+    description: cloud-rest-to-streamforward-servicebus
+spec:                                                 
+  source: "<ruleEndpoint_cloud_rest>"
+  sourceResource: { "path": "<cloud_rest_path>" }
+  target: "<ruleEndpoint_streamforward_servicebus>"
+  targetResource: { "path": "/api/v1/streamforward"}

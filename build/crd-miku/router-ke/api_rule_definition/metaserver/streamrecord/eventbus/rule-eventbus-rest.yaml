@@ -1,0 +1,11 @@
+apiVersion: rules.kubeedge.io/v1
+kind: Rule
+metadata:
+  name:  <metaserver_streamrecord_rule_eventbus_rest>           #不可重复
+  labels:
+    description: cloud-streamrecord-to-edge
+spec:                                                  #定义了云端应用通过暴露的url发送消息到边缘app的路由规则（边缘app订阅topic接收），注意消息传递是单向的，即从云端应用->边缘app
+    source: "<ruleEndpoint_edge_eventbus>"
+    sourceResource: { "topic": "<topic_name>", "node-name": "<edge_node>" }
+    target: "<ruleEndpoint_streamrecord_rest>"
+    targetResource: { "resource": "http://<cloud_ip>:<cloud_port>/api/v1/streamrecord" }
