@@ -192,13 +192,30 @@ func (dc *DownstreamController) syncSecret() {
 				continue // continue to next select
 			}
 
-			nodes := dc.lc.SecretNodes(secret.Namespace, secret.Name)
+			var nodes []string
+			labels := secret.ObjectMeta.Labels
+			appName := ""
+			if labels != nil && len(labels) != 0 {
+				if configType, ok := labels[constants.ConfigType]; ok {
+					if configType == constants.Native {
+						nodes = []string{labels[constants.NodeName]}
+						appName = labels[constants.AppName]
+					}
+				}
+			}
+			if nodes == nil && len(nodes) > 0 {
+					  nodes = dc.lc.SecretNodes(secret.Namespace, secret.Name)
+			}
 			if e.Type == watch.Deleted {
 				dc.lc.DeleteSecret(secret.Namespace, secret.Name)
 			}
 			klog.V(4).Infof("there are %d nodes need to sync secret, operation: %s", len(nodes), e.Type)
 			for _, n := range nodes {
-				resource, err := messagelayer.BuildResource(n, secret.Namespace, model.ResourceTypeSecret, secret.Name)
+				resourceID := secret.Name
+				if appName != "" {
+					resourceID = resourceID + commonconstants.ResourceSep + appName
+				}
+				resource, err := messagelayer.BuildResource(n, secret.Namespace, model.ResourceTypeSecret, resourceID)
 				if err != nil {
 					klog.Warningf("build message resource failed with error: %s", err)
 					continue

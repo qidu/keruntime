@@ -1,0 +1,11 @@
+apiVersion: rules.kubeedge.io/v1
+kind: Rule
+metadata:
+  name: <rest_eventbus_rule_name>              #不可重复
+  labels:
+    description: <cloud-rest-edge-eventbus>
+spec:                                        #定义了云端应用通过暴露的url发送消息到边缘app的路由规则（边缘app订阅topic接收），注意消息传递是单向的，即从云端应用->边缘app
+  source: "<ruleEndpoint_cloud_rest>"
+  sourceResource: {"path":"<url_path>"}      #定义了云端应用暴露的rest api中的path路径
+  target: "<ruleEndpoint_mikustreamd_streamforward_eventbus>"
+  targetResource: {"topic":"<mikustreamd_streamforward>", "node-name":"<edge_node>"}       #定义了边缘node中的应用需要订阅哪一个topic来接收云端发送过来的消息

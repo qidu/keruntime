@@ -1,0 +1,11 @@
+apiVersion: rules.kubeedge.io/v1
+kind: Rule
+metadata:
+  name: <rule_rest_to_channeldelete_servicebus>
+  labels:
+    description: cloud-rest-to-channeldelete-servicebus
+spec:                                                 
+  source: "<ruleEndpoint_cloud_rest>"
+  sourceResource: { "path": "<cloud_rest_path>" }
+  target: "<ruleEndpoint_channeldelete_servicebus>"
+  targetResource: { "path": "/api/v1/channeldelete"}

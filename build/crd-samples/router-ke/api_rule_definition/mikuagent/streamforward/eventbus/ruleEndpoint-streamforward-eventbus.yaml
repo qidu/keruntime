@@ -1,0 +1,9 @@
+apiVersion: rules.kubeedge.io/v1
+kind: RuleEndpoint
+metadata:
+  name: <ruleEndpoint_streamforward_eventbus>           #不可重复
+  labels:
+    description: edge-eventbus-ruleEndpoint
+spec:
+        ruleEndpointType: "eventbus"               #定义了边缘端ruleEndpoint类型为eventbus,即边缘app通过订阅topic接收云端发送过来的消息
+  properties: {}

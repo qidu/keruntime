@@ -1,0 +1,9 @@
+apiVersion: rules.kubeedge.io/v1
+kind: RuleEndpoint
+metadata:
+  name: <ruleEndpoint_talkcreate_servicebus>           #不可重复
+  labels:
+    description: edge-talkcreate-ruleEndpoint
+spec:
+  ruleEndpointType: "servicebus"             
+  properties: {"service_port":"<mikuagent_port>"}

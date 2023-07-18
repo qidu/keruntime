@@ -91,6 +91,10 @@ func GetNamespace(msg model.Message) (string, error) {
 func GetResourceType(msg model.Message) (string, error) {
 	res := getElementByIndex(msg, ResourceResourceTypeIndex)
 	if res == "" {
+		if msg.GetOperation() == constants.NodeDisConnectOperation {
+			res = getElementByIndex(msg, 0)
+			return res, nil
+		}
 		return "", fmt.Errorf("resource type not found")
 	}
 	klog.V(4).Infof("The resource type is %s, %d", res, ResourceResourceTypeIndex)

@@ -336,8 +336,8 @@ func (m *metaManager) processQuery(message model.Message) {
 	var metas *[]string
 	var err error
 	if requireRemoteQuery(resType) && connect.IsConnected() {
-		if message.GetSource() == modules.AppsdModuleName && resType == model.ResourceTypeConfigmap {
-			metas, err = dao.QueryMetaByGroupConds(map[string]string{"type": model.ResourceTypeConfigmap, "appname": resID})
+		if message.GetSource() == modules.AppsdModuleName {
+			metas, err = dao.QueryMetaByGroupConds(map[string]string{"type": resType, "appname": resID})
 			resp := message.NewRespByMessage(&message, *metas)
 			resp.SetRoute(modules.MetaManagerModuleName, resp.GetGroup())
 			sendToAppsd(resp, message.IsSync())

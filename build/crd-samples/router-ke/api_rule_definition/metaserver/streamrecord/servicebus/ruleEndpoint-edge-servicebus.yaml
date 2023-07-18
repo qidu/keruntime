@@ -1,0 +1,9 @@
+apiVersion: rules.kubeedge.io/v1
+kind: RuleEndpoint
+metadata:
+  name: ruleEndpoint-edge-servicebus           #不可重复
+  labels:
+    description: edge-ruleEndpoint
+spec:
+  ruleEndpointType: "servicebus"             
+  properties: {"service_port":"8888"}

@@ -1,0 +1,11 @@
+apiVersion: rules.kubeedge.io/v1
+kind: Rule
+metadata:
+  name: eventbus-to-rest-rule                                          
+  labels:
+    description: test
+spec:
+  source: "my-eventbus"
+  sourceResource: {"topic": "test","node_name": "edge-node"}           
+  target: "my-rest"                                                   
+  targetResource: {"resource":"http://127.0.0.1:8888/myevents"}

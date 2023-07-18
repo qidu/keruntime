@@ -93,6 +93,7 @@ require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bifurcation/mint v0.0.0-20180715133206-93c51c6ce115 // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
+	github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/chai2010/gettext-go v0.0.0-20160711120539-c6fed771bfd5 // indirect
 	github.com/checkpoint-restore/go-criu/v5 v5.3.0 // indirect
@@ -193,6 +194,7 @@ require (
 	github.com/prometheus/procfs v0.7.3 // indirect
 	github.com/rubenv/sql-migrate v1.1.1 // indirect
 	github.com/russross/blackfriday v1.5.2 // indirect
+	github.com/satori/go.uuid v1.2.0
 	github.com/seccomp/libseccomp-golang v0.9.2-0.20220502022130-f33da4d89646 // indirect
 	github.com/shopspring/decimal v1.2.0 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect

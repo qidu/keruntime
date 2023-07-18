@@ -1,0 +1,11 @@
+apiVersion: rules.kubeedge.io/v1
+kind: Rule
+metadata:
+  name:  <rule_eventbus_to_rest_streamreport>             
+  labels:
+    description: edge-eventbus-rest-streamforward
+spec:                                                  
+  source: "<ruleEndpoint_edge_eventbus>"
+  sourceResource: {"topic":"<topic_name>", "node-name":"<edge_node>"}     
+  target: "<ruleEndpoint_streamrecord_rest>"
+  targetResource: {"resource": "http://<cloud_ip>:<cloud_port>/api/v1/streamreport"} 

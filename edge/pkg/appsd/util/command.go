@@ -2,7 +2,10 @@ package util
 
 import (
 	"bytes"
+	"fmt"
+	"os"
 	"os/exec"
+	"strings"
 	"syscall"
 	"time"
 
@@ -29,13 +32,22 @@ func StartProcess(path string, args string) error {
 	if ok, err := CheckCmdExists(path); !ok {
 		return err
 	}
+	s := strings.Split(path, " ")
+	var newEnv []string
+	if s != nil && len(s) > 1 {
+		for i := 0; i < len(s)-1; i++ {
+			newEnv = append(os.Environ(), s[i])
+		}
+		path = s[len(s)-1]
+	}
 	cmd := exec.Command(path, args)
+	cmd.Env = newEnv
+
 	var stdin, stdout, stderr bytes.Buffer
 	cmd.Stdin = &stdin
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	err = cmd.Run()
-	cmd.Start()
 	if err != nil {
 		return err
 	}
@@ -57,6 +69,9 @@ func StopProcess(path string) error {
 			process = p
 			break
 		}
+	}
+	if process == nil {
+		return fmt.Errorf("path %s is not exist", path)
 	}
 
 	var isRunning bool

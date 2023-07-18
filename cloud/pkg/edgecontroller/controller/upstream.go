@@ -26,10 +26,12 @@ we grab some functions from `kubelet/status/status_manager.go and do some modifi
 package controller
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	stderrors "errors"
 	"fmt"
+	"net/http"
 	"sort"
 	"strings"
 	"time"
@@ -56,6 +58,7 @@ import (
 	"github.com/kubeedge/kubeedge/cloud/pkg/edgecontroller/constants"
 	"github.com/kubeedge/kubeedge/cloud/pkg/edgecontroller/types"
 	routerrule "github.com/kubeedge/kubeedge/cloud/pkg/router/rule"
+	httpUtils "github.com/kubeedge/kubeedge/cloud/pkg/router/utils/http"
 	common "github.com/kubeedge/kubeedge/common/constants"
 	edgeapi "github.com/kubeedge/kubeedge/common/types"
 	"github.com/kubeedge/kubeedge/pkg/apis/componentconfig/cloudcore/v1alpha1"
@@ -95,6 +98,7 @@ type UpstreamController struct {
 	kubeClient   kubernetes.Interface
 	messageLayer messagelayer.MessageLayer
 	crdClient    crdClientset.Interface
+	httpClient   *http.Client
 
 	config v1alpha1.EdgeController
 
@@ -116,6 +120,7 @@ type UpstreamController struct {
 	ruleStatusChan            chan model.Message
 	createLeaseChan           chan model.Message
 	queryLeaseChan            chan model.Message
+	nodeDisconnectedChan      chan model.Message
 
 	// lister
 	podLister       corelisters.PodLister
@@ -182,6 +187,9 @@ func (uc *UpstreamController) Start() error {
 	for i := 0; i < int(uc.config.Load.UpdateRuleStatusWorkers); i++ {
 		go uc.updateRuleStatus()
 	}
+	for i := 0; i < int(uc.config.Load.NodeDisconnectWorks); i++ {
+		go uc.notifyNodeDisconnect()
+	}
 	return nil
 }
 
@@ -235,6 +243,8 @@ func (uc *UpstreamController) dispatchMessage() {
 				uc.queryNodeChan <- msg
 			case model.UpdateOperation:
 				uc.updateNodeChan <- msg
+			case common.NodeDisConnectOperation:
+				uc.nodeDisconnectedChan <- msg
 			default:
 				klog.Errorf("message: %s, operation type: %s unsupported", msg.GetID(), msg.GetOperation())
 			}
@@ -259,6 +269,35 @@ func (uc *UpstreamController) dispatchMessage() {
 			}
 		default:
 			klog.Errorf("message: %s, resource type: %s unsupported", msg.GetID(), resourceType)
+		}
+	}
+}
+
+func (uc *UpstreamController) notifyNodeDisconnect() {
+	for {
+		select {
+		case <-beehiveContext.Done():
+			klog.Warning("stop notifyNodeDisconnect")
+			return
+		case msg := <-uc.nodeDisconnectedChan:
+			content, err := msg.GetContentData()
+			if err != nil {
+				klog.Errorf("get message content data failed: %v", err)
+				continue
+			}
+			req, err := httpUtils.BuildRequest(http.MethodPost, uc.getNodeDisconnectNotifyUrl(), bytes.NewReader(content), "", "")
+			if err != nil {
+				klog.Errorf("build node disconnect notify http request failed: %v", err)
+				continue
+			}
+			resp, err := httpUtils.SendRequest(req, uc.httpClient)
+			if err != nil {
+				klog.Errorf("send node disconnect notify http request failed: %v", err)
+				continue
+			}
+			if resp.StatusCode == http.StatusOK {
+				klog.Info("notify node disconnect successfully!")
+			}
 		}
 	}
 }
@@ -1345,6 +1384,12 @@ func (uc *UpstreamController) nodeMsgResponse(nodeName, namespace, content strin
 		klog.Warningf("Response message: %s failed, response failed with error: %s", msg.GetID(), err)
 		return
 	}
+}
+
+func (uc *UpstreamController) getNodeDisconnectNotifyUrl() string {
+	notifyUrl := fmt.Sprintf("%s://%s:%d%s", uc.config.NotifyNodeDisconnect.Schema,
+	uc.config.NotifyNodeDisconnect.Address, uc.config.NotifyNodeDisconnect.Port, uc.config.NotifyNodeDisconnect.Path)
+	return notifyUrl
 }
 
 // NewUpstreamController create UpstreamController from config
