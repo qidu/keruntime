@@ -17,18 +17,34 @@ limitations under the License.
 package util
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
+	"io"
+	"k8s.io/klog/v2"
 	"net"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"strings"
 
+	uuid "github.com/satori/go.uuid"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
 	"k8s.io/kubernetes/pkg/apis/core/validation"
 
 	"github.com/kubeedge/kubeedge/common/constants"
+)
+
+const (
+	// 主板序列号
+	// 对于 docker 容器，不同容器内容也不相同
+	productUuidPath = "/sys/class/dmi/id/product_uuid"
+)
+
+var (
+	uuidName = "www.unreachable.com"
+	defaultIDPath    = "/opt/qiniu/nodeid"
 )
 
 func GetLocalIP(hostName string) (string, error) {
@@ -149,4 +165,91 @@ func ConcatStrings(ss ...string) string {
 		bff.WriteString(s)
 	}
 	return bff.String()
+}
+
+// GetNodeId used to obtain the current node ID after service startup
+// node id keep unchanged after service startup
+func GetNodeId() (string, error) {
+	var id string
+	// read for the fixed path, it will be treated as a new node when path is not exist
+	idf, err := os.Open(defaultIDPath)
+	if os.IsNotExist(err) {
+		id, err = genUUID()
+		if err != nil {
+			klog.Errorf("gen uuid failed, err: %v", err)
+			return "", err
+		}
+		idf, err = newIDFile(id)
+		if err != nil {
+			klog.Errorf("read id file info failed, err: %v", err)
+			return "", err
+		}
+	}
+	defer idf.Close()
+
+	scanner := bufio.NewReader(idf)
+	lines, _, err := scanner.ReadLine()
+
+	if err != nil {
+		if err != io.EOF {
+			klog.Errorf("read id info failed, err: %v", err)
+			return "", err
+		}
+	}
+	if len(lines) == 0 {
+		klog.Error("empty id info")
+	}
+
+	return strings.TrimSuffix(string(lines), "\n"), nil
+}
+
+func newIDFile(id string) (*os.File, error) {
+	err := createIDFile(id)
+	if err != nil {
+		return nil, err
+	}
+	// ensure the file was being created
+	f, err := os.Open(defaultIDPath)
+	if err != nil {
+		klog.Errorf("reopen id file failed, err: %v", err)
+		return nil, err
+	}
+	return f, nil
+}
+
+func createIDFile(name string) error {
+	err := os.MkdirAll(path.Dir(defaultIDPath), os.ModePerm)
+	if err != nil {
+		klog.Errorf("create id file path failed, err: %v", err)
+		return err
+	}
+	f, err := os.Create(defaultIDPath)
+	if err != nil {
+		klog.Errorf("create id file failed, err: %v", err)
+		return err
+	}
+	_, err = f.WriteString(name)
+	if err != nil {
+		return err
+	}
+	// commit
+	err = f.Sync()
+	if err != nil {
+		klog.Errorf("sync id fo sys failed, err: %v", err)
+		return err
+	}
+	err = f.Close()
+
+	return err
+}
+
+func genUUID() (string, error) {
+	bs, err := os.ReadFile(productUuidPath)
+	if err != nil {
+		klog.Errorf("read product uuid failed, err: %v", err)
+		return "", err
+	}
+	uuidName = strings.TrimSuffix(string(bs), "\n")
+	name := uuid.NewV3(uuid.NamespaceDNS, uuidName)
+	return name.String(), nil
 }
