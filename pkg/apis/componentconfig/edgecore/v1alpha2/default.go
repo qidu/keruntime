@@ -31,8 +31,8 @@ import (
 
 // NewDefaultEdgeCoreConfig returns a full EdgeCoreConfig object
 func NewDefaultEdgeCoreConfig() *EdgeCoreConfig {
-	hostnameOverride := util.GetHostname()
-	localIP, _ := util.GetLocalIP(hostnameOverride)
+	hostnameOverride, _ := util.GetNodeId()
+	localIP, _ := util.GetLocalIP(util.GetHostname())
 
 	defaultTailedKubeletConfig := TailoredKubeletConfiguration{}
 	SetDefaultsKubeletConfiguration(&defaultTailedKubeletConfig)
@@ -169,8 +169,8 @@ func NewDefaultEdgeCoreConfig() *EdgeCoreConfig {
 
 // NewMinEdgeCoreConfig returns a common EdgeCoreConfig object
 func NewMinEdgeCoreConfig() *EdgeCoreConfig {
-	hostnameOverride := util.GetHostname()
-	localIP, _ := util.GetLocalIP(hostnameOverride)
+	hostnameOverride, _ := util.GetNodeId()
+	localIP, _ := util.GetLocalIP(util.GetHostname())
 
 	defaultTailedKubeletConfig := TailoredKubeletConfiguration{}
 	SetDefaultsKubeletConfiguration(&defaultTailedKubeletConfig)
