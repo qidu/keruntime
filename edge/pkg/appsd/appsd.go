@@ -114,8 +114,8 @@ func server(stopChan <-chan struct{}) {
 		Certificates: []tls.Certificate{*certificate},
 		MinVersion:   tls.VersionTLS12,
 	}
-
-	s := http.Server{
+  
+  s := http.Server{
 		Addr:    fmt.Sprintf("%s:%d", appsdconfig.Config.Server, appsdconfig.Config.Port),
 		Handler: mux,
 		TLSConfig: config,
@@ -132,7 +132,7 @@ func server(stopChan <-chan struct{}) {
 	}()
 
 	klog.Infof("[appsdserver]start to listen and server at http://%v", s.Addr)
-	utilruntime.HandleError(s.ListenAndServe())
+	utilruntime.HandleError(s.ListenAndServeTLS("",""))
 }
 
 func queryConfigHandler(w http.ResponseWriter, req *http.Request) {

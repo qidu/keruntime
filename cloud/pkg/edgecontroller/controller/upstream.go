@@ -58,6 +58,7 @@ import (
 	"github.com/kubeedge/kubeedge/cloud/pkg/edgecontroller/constants"
 	"github.com/kubeedge/kubeedge/cloud/pkg/edgecontroller/types"
 	routerrule "github.com/kubeedge/kubeedge/cloud/pkg/router/rule"
+	httpUtils "github.com/kubeedge/kubeedge/cloud/pkg/router/utils/http"
 	common "github.com/kubeedge/kubeedge/common/constants"
 	edgeapi "github.com/kubeedge/kubeedge/common/types"
 	"github.com/kubeedge/kubeedge/pkg/apis/componentconfig/cloudcore/v1alpha1"
