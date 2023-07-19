@@ -111,15 +111,15 @@ function create_operation_crd {
 
 function create_rule_ruleendpoint {
   echo "creating the rule and ruleendpoint..."
-  kubectl apply -f ${KUBEEDGE_ROOT}/build/crd-miku/router_ke/ruleEndpoint-eventbus-cloud-rest.yaml
-  kubectl apply -f ${KUBEEDGE_ROOT}/build/crd-miku/router_ke/ruleEndpoint-eventbus-edge-eventbus.yaml
-  kubectl apply -f ${KUBEEDGE_ROOT}/build/crd-miku/router_ke/rule-eventbus-to-rest.yaml
+  kubectl apply -f ${KUBEEDGE_ROOT}/build/crd-miku/router-ke/ruleEndpoint-eventbus-cloud-rest.yaml
+  kubectl apply -f ${KUBEEDGE_ROOT}/build/crd-miku/router-ke/ruleEndpoint-eventbus-edge-eventbus.yaml
+  kubectl apply -f ${KUBEEDGE_ROOT}/build/crd-miku/router-ke/rule-eventbus-to-rest.yaml
   echo "create edge eventbus to cloud rest rule done."
-  kubectl apply -f ${KUBEEDGE_ROOT}/build/crd-miku/router_ke/rule-rest-to-eventbus.yaml
+  kubectl apply -f ${KUBEEDGE_ROOT}/build/crd-miku/router-ke/rule-rest-to-eventbus.yaml
   echo "create cloud rest to edge eventbus rule done."
-  kubectl apply -f ${KUBEEDGE_ROOT}/build/crd-miku/router_ke/ruleEndpoint-cloud-rest.yaml
-  kubectl apply -f ${KUBEEDGE_ROOT}/build/crd-miku/router_ke/ruleEndpoint-edge-servicebus.yaml
-  kubectl apply -f ${KUBEEDGE_ROOT}/build/crd-miku/router_ke/rule-rest-to-servicebus.yaml
+  kubectl apply -f ${KUBEEDGE_ROOT}/build/crd-miku/router-ke/ruleEndpoint-cloud-rest.yaml
+  kubectl apply -f ${KUBEEDGE_ROOT}/build/crd-miku/router-ke/ruleEndpoint-edge-servicebus.yaml
+  kubectl apply -f ${KUBEEDGE_ROOT}/build/crd-miku/router-ke/rule-rest-to-servicebus.yaml
   echo "create cloud rest to edge servicebus rule done."
 }
 
