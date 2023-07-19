@@ -1,0 +1,11 @@
+apiVersion: rules.kubeedge.io/v1
+kind: Rule
+metadata:
+  name: <metaserver_streamunregister_rule_servicebus_rest>
+  labels:
+    description: edge-servicebus-to-streamregister-rest
+spec:                                                 
+  source: "<ruleEndpoint_edge_servicebus>"
+  sourceResource: { "target_url": "http://<cloud_ip>:<cloud_port>/api/v1/streamunregister", "node_name": "<edge_node>" }
+  target: "<ruleEndpoint_streamunregister_rest>"
+  targetResource: { "resource": "http://<cloud_ip>:<cloud_port>/api/v1/streamunregister"}
