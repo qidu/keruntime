@@ -33,10 +33,10 @@ func StartProcess(path string, args string) error {
 		return err
 	}
 	s := strings.Split(path, " ")
-	var newEnv []string
+	newEnv := os.Environ()
 	if s != nil && len(s) > 1 {
 		for i := 0; i < len(s)-1; i++ {
-			newEnv = append(os.Environ(), s[i])
+			newEnv = append(newEnv, s[i])
 		}
 		path = s[len(s)-1]
 	}

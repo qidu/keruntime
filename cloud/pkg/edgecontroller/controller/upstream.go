@@ -64,6 +64,7 @@ import (
 	"github.com/kubeedge/kubeedge/pkg/apis/componentconfig/cloudcore/v1alpha1"
 	rulesv1 "github.com/kubeedge/kubeedge/pkg/apis/rules/v1"
 	crdClientset "github.com/kubeedge/kubeedge/pkg/client/clientset/versioned"
+	httpUtils "github.com/kubeedge/kubeedge/cloud/pkg/router/utils/http"
 	"github.com/kubeedge/kubeedge/pkg/metaserver/util"
 )
 

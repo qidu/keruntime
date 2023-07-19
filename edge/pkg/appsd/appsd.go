@@ -114,8 +114,8 @@ func server(stopChan <-chan struct{}) {
 		Certificates: []tls.Certificate{*certificate},
 		MinVersion:   tls.VersionTLS12,
 	}
-	// todo: support tls
-	s := http.Server{
+  
+  s := http.Server{
 		Addr:    fmt.Sprintf("%s:%d", appsdconfig.Config.Server, appsdconfig.Config.Port),
 		Handler: mux,
 		TLSConfig: config,
