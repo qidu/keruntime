@@ -1,9 +1,0 @@
-apiVersion: rules.kubeedge.io/v1
-kind: RuleEndpoint
-metadata:
-  name:  ruleEndpoint-streamrecord-rest       #不可重复
-  labels:
-    description: streamrecord-ruleEndpoint
-spec:
-  ruleEndpointType: "rest"                    #定义了云端ruleEndpoint类型为rest api
-  properties: {}

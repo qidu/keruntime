@@ -1,0 +1,11 @@
+apiVersion: rules.kubeedge.io/v1
+kind: Rule
+metadata:
+  name:  <metaserver_keyrequest_rule_eventbus_rest>
+  labels:
+    description: edge-eventbus-rest-keyrequest
+spec:                                                  
+  source: "<ruleEndpoint_edge_eventbus>"
+  sourceResource: {"topic":"<topic_name>", "node-name":"<edge_node>"}     
+  target: "<ruleEndpoint_keyrequest_rest>"
+  targetResource: {"resource": "http://<cloud_ip>:<cloud_port>/api/v1/keyrequest"}
