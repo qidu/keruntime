@@ -57,6 +57,11 @@ func StartProcess(path string, args string) error {
 }
 
 func StopProcess(path string) error {
+	s := strings.Split(path, " ")
+	if s != nil && len(s) > 1 {
+		path = s[len(s)-1]
+	}
+
 	processes, err := process.Processes()
 	if err != nil {
 		return err
