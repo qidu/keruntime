@@ -1,9 +1,0 @@
-apiVersion: rules.kubeedge.io/v1
-kind: RuleEndpoint
-metadata:
-  name: my-servicebus
-  labels:
-    description: test
-spec:
-  ruleEndpointType: "servicebus"
-  properties: { "service_port": "8888" }

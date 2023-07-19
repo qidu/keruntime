@@ -1,9 +1,0 @@
-apiVersion: rules.kubeedge.io/v1
-kind: RuleEndpoint
-metadata:
-  name: <ruleEndpoint_streamforward_servicebus>           #不可重复
-  labels:
-    description: edge-streamforward-ruleEndpoint
-spec:
-  ruleEndpointType: "servicebus"             
-  properties: {"service_port":"<mikuagent_port>"}

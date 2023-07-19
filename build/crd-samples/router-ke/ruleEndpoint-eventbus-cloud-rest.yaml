@@ -1,9 +1,0 @@
-apiVersion: rules.kubeedge.io/v1
-kind: RuleEndpoint
-metadata:
-  name: eventbus-cloud-rest
-  labels:
-    description: cloud-endpoint
-spec:
-  ruleEndpointType: "rest"
-  properties: {}
