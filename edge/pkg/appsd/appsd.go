@@ -115,7 +115,7 @@ func server(stopChan <-chan struct{}) {
 		MinVersion:   tls.VersionTLS12,
 	}
   
-  s := http.Server{
+    s := http.Server{
 		Addr:    fmt.Sprintf("%s:%d", appsdconfig.Config.Server, appsdconfig.Config.Port),
 		Handler: mux,
 		TLSConfig: config,
