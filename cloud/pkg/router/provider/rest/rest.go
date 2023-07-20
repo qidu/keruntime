@@ -2,6 +2,7 @@ package rest
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -201,6 +202,11 @@ func (r *Rest) GoToTarget(data map[string]interface{}, stop chan struct{}) (inte
 	if !ok || len(content) == 0 {
 		return nil, errors.New("invalid convert to []byte")
 	}
+	decoded, err := base64.StdEncoding.DecodeString(string(content))
+	if err == nil {
+		content = decoded
+	}
+
 	nodeName, ok := data["nodeName"].(string)
 	if !ok {
 		err := fmt.Errorf("input data does not exist valid value \"nodeName\"")
