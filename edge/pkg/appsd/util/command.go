@@ -27,7 +27,7 @@ func CheckCmdExists(cmd string) (bool, error) {
 	return true, nil
 }
 
-func StartProcess(path string, args string) error {
+func StartProcess(path string, arg string) error {
 	var err error
 	s := strings.Split(path, " ")
 	newEnv := os.Environ()
@@ -40,7 +40,8 @@ func StartProcess(path string, args string) error {
 	if ok, err := CheckCmdExists(path); !ok {
 		return err
 	}
-	cmd := exec.Command(path, args)
+	args := strings.Split(arg," ")
+	cmd := exec.Command(path, args...)
 	cmd.Env = newEnv
 
 	var stdin, stdout, stderr bytes.Buffer
