@@ -27,11 +27,12 @@ import (
 	"github.com/kubeedge/kubeedge/common/constants"
 	metaconfig "github.com/kubeedge/kubeedge/pkg/apis/componentconfig/meta/v1alpha1"
 	"github.com/kubeedge/kubeedge/pkg/util"
+	common "github.com/qbox/mikud-live/common/node"
 )
 
 // NewDefaultEdgeCoreConfig returns a full EdgeCoreConfig object
 func NewDefaultEdgeCoreConfig() *EdgeCoreConfig {
-	hostnameOverride, _ := util.GetNodeId()
+	hostnameOverride := common.GetNodeId()
 	localIP, _ := util.GetLocalIP(util.GetHostname())
 
 	defaultTailedKubeletConfig := TailoredKubeletConfiguration{}
@@ -169,7 +170,7 @@ func NewDefaultEdgeCoreConfig() *EdgeCoreConfig {
 
 // NewMinEdgeCoreConfig returns a common EdgeCoreConfig object
 func NewMinEdgeCoreConfig() *EdgeCoreConfig {
-	hostnameOverride, _ := util.GetNodeId()
+	hostnameOverride := common.GetNodeId()
 	localIP, _ := util.GetLocalIP(util.GetHostname())
 
 	defaultTailedKubeletConfig := TailoredKubeletConfiguration{}
