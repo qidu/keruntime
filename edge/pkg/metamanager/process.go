@@ -68,12 +68,11 @@ func sendToCloud(message *model.Message) {
 
 // Resource format: <namespace>/<restype>[/resid]
 // return <reskey, restype, resid>
-func parseResource(message *model.Message) (string, string, string, string) {
+func parseResource(message *model.Message) (string, string, string, string, string) {
 	resource := message.GetResource()
 	tokens := strings.Split(resource, constants.ResourceSep)
-	resType := ""
-	resID := ""
-	appName := ""
+	resType, resID, appName, domain := "", "", "", ""
+
 	switch len(tokens) {
 	case 2:
 		resType = tokens[len(tokens)-1]
@@ -84,28 +83,58 @@ func parseResource(message *model.Message) (string, string, string, string) {
 		resType = tokens[len(tokens)-3]
 		resID = tokens[len(tokens)-2]
 		appName = tokens[len(tokens)-1]
+	case 5:
+		resType = tokens[len(tokens)-4]
+		resID = tokens[len(tokens)-3]
+		appName = tokens[len(tokens)-2]
+		domain = tokens[len(tokens)-1]
 	default:
 	}
 	if resType != model.ResourceTypeServiceAccountToken {
-		return resource, resType, resID, appName
+		return resource, resType, resID, appName, domain
 	}
 	var tokenReq authenticationv1.TokenRequest
 	content, err := message.GetContentData()
 	if err != nil {
 		klog.Errorf("failed to get token request from message %s, error %s", message.GetID(), err)
-		return "", "", "", ""
+		return "", "", "", "", ""
 	}
 	if err = json.Unmarshal(content, &tokenReq); err != nil {
 		klog.Errorf("failed to unmarshal token request from message %s, error %s", message.GetID(), err)
-		return "", "", "", ""
+		return "", "", "", "", ""
 	}
 
 	trTokens := strings.Split(resource, constants.ResourceSep)
 	if len(trTokens) != 3 {
 		klog.Errorf("failed to get resource %s name and namespace", resource)
-		return "", "", "", ""
+		return "", "", "", "", ""
 	}
-	return client.KeyFunc(trTokens[2], trTokens[0], &tokenReq), resType, "", ""
+	return client.KeyFunc(trTokens[2], trTokens[0], &tokenReq), resType, "", "", ""
+}
+
+// Resource format: <namespace>/<restype>[/resid]
+// return <reskey, namespace, restype, appname, domain>
+func parseResourceFromAppsd(message *model.Message) (string, string, string, string, string) {
+	resource := message.GetResource()
+	tokens := strings.Split(resource, constants.ResourceSep)
+	namespace, resType, appName, domain := "", "", "", ""
+
+	switch len(tokens) {
+	case 4:
+		namespace = tokens[2]
+		resType = tokens[3]
+	case 5:
+		namespace = tokens[2]
+		resType = tokens[3]
+		appName = tokens[4]
+	case 6:
+		namespace = tokens[2]
+		resType = tokens[3]
+		appName = tokens[4]
+		domain = tokens[5]
+	default:
+	}
+	return resource, namespace, resType, appName, domain
 }
 
 // is resource type require remote query
@@ -125,7 +154,7 @@ func msgDebugInfo(message *model.Message) string {
 }
 
 func (m *metaManager) handleMessage(message *model.Message) error {
-	resKey, resType, _, appName := parseResource(message)
+	resKey, resType, _, appName, domain := parseResource(message)
 	switch message.GetOperation() {
 	case model.InsertOperation, model.UpdateOperation, model.PatchOperation, model.ResponseOperation:
 		content, err := message.GetContentData()
@@ -137,6 +166,7 @@ func (m *metaManager) handleMessage(message *model.Message) error {
 			Key:     resKey,
 			Type:    resType,
 			AppName: appName,
+			Domain:  domain,
 			Value:   string(content)}
 		err = dao.InsertOrUpdate(meta)
 		if err != nil {
@@ -194,7 +224,7 @@ func (m *metaManager) processUpdate(message model.Message) {
 	imitator.DefaultV2Client.Inject(message)
 
 	msgSource := message.GetSource()
-	_, resType, _, _ := parseResource(&message)
+	_, resType, _, _, _ := parseResource(&message)
 	if msgSource == modules.EdgedModuleName && resType == model.ResourceTypeLease {
 		if !connect.IsConnected() {
 			klog.Warningf("process remote failed, req[%s], err: %v", msgDebugInfo(&message), errNotConnected)
@@ -256,7 +286,7 @@ func (m *metaManager) processResponse(message model.Message) {
 
 func (m *metaManager) processDelete(message model.Message) {
 	imitator.DefaultV2Client.Inject(message)
-	_, resType, _, _ := parseResource(&message)
+	_, resType, _, _, _ := parseResource(&message)
 	if resType == model.ResourceTypePod && message.GetSource() == modules.EdgedModuleName {
 		// if pod is deleted in K8s, then a new delete message will be sent to edge
 		sendToCloud(&message)
@@ -332,15 +362,33 @@ func processDeletePodDB(message model.Message) error {
 }
 
 func (m *metaManager) processQuery(message model.Message) {
-	resKey, resType, resID, _ := parseResource(&message)
+	appName, domain := "", ""
+	resKey, resType, resID, _, _ := parseResource(&message)
+	if message.GetSource() == modules.AppsdModuleName {
+		_, _, resType, appName, domain = parseResourceFromAppsd(&message)
+	}
+
 	var metas *[]string
 	var err error
 	if requireRemoteQuery(resType) && connect.IsConnected() {
 		if message.GetSource() == modules.AppsdModuleName {
-			metas, err = dao.QueryMetaByGroupConds(map[string]string{"type": resType, "appname": resID})
-			resp := message.NewRespByMessage(&message, *metas)
-			resp.SetRoute(modules.MetaManagerModuleName, resp.GetGroup())
-			sendToAppsd(resp, message.IsSync())
+			conditions := map[string]string{"type": resType}
+			if domain != "" {
+				conditions["domain"] = domain
+			}
+			if appName != "" {
+				conditions["appname"] = appName
+			}
+			metas, err = dao.QueryMetasByGroupCond(conditions)
+			if err != nil {
+				klog.Errorf("query meta failed, %s", msgDebugInfo(&message))
+				feedbackError(fmt.Errorf("failed to query meta in DB: %s", err), message)
+				return
+			} else {
+				resp := message.NewRespByMessage(&message, *metas)
+				resp.SetRoute(modules.MetaManagerModuleName, resp.GetGroup())
+				sendToAppsd(resp, message.IsSync())
+			}
 			return
 		}
 		m.processRemote(message)

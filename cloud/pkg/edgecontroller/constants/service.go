@@ -19,8 +19,14 @@ const (
 	NodeName = "nodeName"
 	// configmap label key, the value is app name
 	AppName = "appName"
+	// secret label key, the value is domain
+	Domain = "domain"
 	// configType: pod
 	Pod = "pod"
 	// configType: native
 	Native = "native"
+	// edge node role label
+	EdgeNodeLabel = "node-role.kubernetes.io/edge"
+	// node ready status
+	Ready = "Ready"
 )
