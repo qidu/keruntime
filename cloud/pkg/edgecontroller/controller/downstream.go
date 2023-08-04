@@ -20,6 +20,7 @@ import (
 	"github.com/kubeedge/kubeedge/cloud/pkg/common/modules"
 	"github.com/kubeedge/kubeedge/cloud/pkg/edgecontroller/constants"
 	"github.com/kubeedge/kubeedge/cloud/pkg/edgecontroller/manager"
+	"github.com/kubeedge/kubeedge/cloud/pkg/edgecontroller/util"
 	commonconstants "github.com/kubeedge/kubeedge/common/constants"
 	"github.com/kubeedge/kubeedge/pkg/apis/componentconfig/cloudcore/v1alpha1"
 	routerv1 "github.com/kubeedge/kubeedge/pkg/apis/rules/v1"
@@ -124,15 +125,20 @@ func (dc *DownstreamController) syncConfigMap() {
 			appName := ""
 
 			if labels != nil && len(labels) != 0 {
-				if configType, ok := labels[constants.ConfigType]; ok {
-					if configType == constants.Native {
-						nodes = []string{labels[constants.NodeName]}
-						appName = labels[constants.AppName]
+				configType := labels[constants.ConfigType]
+				if configType == constants.Native {
+					if val, ok := labels[constants.NodeName]; ok {
+						nodes = []string{val}
+					} else {
+						nodes, _ = util.GetEdgeNodes()
+					}
+					if val, ok := labels[constants.AppName]; ok {
+						appName = val
 					}
 				}
 			}
 
-			if nodes == nil {
+			if nodes == nil || len(nodes) == 0 {
 				nodes = dc.lc.ConfigMapNodes(configMap.Namespace, configMap.Name)
 			}
 
@@ -194,17 +200,25 @@ func (dc *DownstreamController) syncSecret() {
 
 			var nodes []string
 			labels := secret.ObjectMeta.Labels
-			appName := ""
+			appName, domain := "", ""
 			if labels != nil && len(labels) != 0 {
-				if configType, ok := labels[constants.ConfigType]; ok {
-					if configType == constants.Native {
-						nodes = []string{labels[constants.NodeName]}
-						appName = labels[constants.AppName]
+				configType := labels[constants.ConfigType]
+				if configType == constants.Native {
+					if val, ok := labels[constants.NodeName]; ok {
+						nodes = []string{val}
+					} else {
+						nodes, _ = util.GetEdgeNodes()
+					}
+					if val, ok := labels[constants.AppName]; ok {
+						appName = val
+					}
+					if val, ok := labels[constants.Domain]; ok {
+						domain = val
 					}
 				}
 			}
-			if nodes == nil && len(nodes) > 0 {
-					  nodes = dc.lc.SecretNodes(secret.Namespace, secret.Name)
+			if nodes == nil || len(nodes) == 0 {
+				nodes = dc.lc.SecretNodes(secret.Namespace, secret.Name)
 			}
 			if e.Type == watch.Deleted {
 				dc.lc.DeleteSecret(secret.Namespace, secret.Name)
@@ -214,6 +228,9 @@ func (dc *DownstreamController) syncSecret() {
 				resourceID := secret.Name
 				if appName != "" {
 					resourceID = resourceID + commonconstants.ResourceSep + appName
+				}
+				if domain != "" {
+					resourceID = resourceID + commonconstants.ResourceSep + domain
 				}
 				resource, err := messagelayer.BuildResource(n, secret.Namespace, model.ResourceTypeSecret, resourceID)
 				if err != nil {

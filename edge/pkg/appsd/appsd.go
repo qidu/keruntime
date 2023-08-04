@@ -19,27 +19,29 @@ package appsd
 import (
 	"context"
 	"crypto/tls"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
-	commonType "github.com/kubeedge/kubeedge/common/types"
 	"strings"
 	"sync"
-
 	"fmt"
 	"net/http"
 	"time"
+
+	v1 "k8s.io/api/core/v1"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/klog/v2"
 
 	"github.com/kubeedge/beehive/pkg/core"
 	beehiveContext "github.com/kubeedge/beehive/pkg/core/context"
 	model "github.com/kubeedge/beehive/pkg/core/model"
 	appsdconfig "github.com/kubeedge/kubeedge/edge/pkg/appsd/config"
+	edgedconfig "github.com/kubeedge/kubeedge/edge/pkg/edged/config"
 	"github.com/kubeedge/kubeedge/edge/pkg/appsd/util"
 	"github.com/kubeedge/kubeedge/edge/pkg/common/message"
 	"github.com/kubeedge/kubeedge/edge/pkg/common/modules"
 	"github.com/kubeedge/kubeedge/pkg/apis/componentconfig/edgecore/v1alpha2"
-	v1 "k8s.io/api/core/v1"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/klog/v2"
+	commonType "github.com/kubeedge/kubeedge/common/types"
 )
 
 // appsd is the main appsd implementation.
@@ -144,13 +146,21 @@ func queryConfigHandler(w http.ResponseWriter, req *http.Request) {
 	query := req.URL.Query()
 	appName := query.Get("appname")
 	configType := query.Get("type")
-	if appName == "" || configType == "" {
-		msg := "request param must have appname and type"
+	domain := query.Get("domain")
+	if configType == "" {
+		msg := "request param must have type field, the value is configmap or secert"
 		util.ResponseError(http.StatusBadRequest, msg, w)
 		return
 	}
-	resource, err := message.BuildResource("", appsdconfig.Config.RegisterNodeNamespace, configType, appName)
-	msg := model.NewMessage("").BuildRouter(modules.AppsdModuleName, modules.AppsdGroup, resource, model.QueryOperation)
+	if domain == "" && appName == "" {
+		msg := "request param must have appname, when query domain cert also includes domain"
+		util.ResponseError(http.StatusBadRequest, msg, w)
+		return
+	}
+	resource, err := message.BuildResource(edgedconfig.Config.HostnameOverride,
+		appsdconfig.Config.RegisterNodeNamespace, configType, appName, domain)
+	msg := model.NewMessage("").BuildRouter(modules.AppsdModuleName,
+			modules.AppsdGroup, resource, model.QueryOperation)
 	responseMessage, err := beehiveContext.SendSync(modules.MetaManagerModuleName, *msg, time.Second*10)
 	if err != nil {
 		util.ResponseError(http.StatusBadRequest, err.Error(), w)
@@ -286,34 +296,58 @@ func processMsg(operationKey string, operationFunc func()) {
 	time.Sleep(5 * time.Second)
 }
 
-func formatConfigmapResp(data []string) ([]map[string]string, error) {
+func formatConfigmapResp(data []string) (map[string]string, error) {
 	if data == nil || len(data) == 0 {
 		return nil, errors.New("data is empty")
 	}
-	var configMaps []map[string]string
-	for _, v := range data {
-		cm := new(v1.ConfigMap)
-		err := json.Unmarshal([]byte(v), cm)
-		if err != nil {
-			return nil, err
-		}
-		configMaps = append(configMaps, (*cm).Data)
+	cm := new(v1.ConfigMap)
+	err := json.Unmarshal([]byte(data[0]), cm)
+	if err != nil {
+		return nil, err
 	}
-	return configMaps, nil
+	res := map[string]string{}
+	if cm.Data != nil && len(cm.Data) > 0 {
+		return cm.Data, nil
+	} else {
+		for k, v := range cm.BinaryData {
+			res[k] = string(v)
+		}
+	}
+	return res, nil
 }
 
-func formatSecretResp(data []string) ([]map[string][]byte, error) {
+func formatSecretResp(data []string) ([]map[string]string, error) {
 	if data == nil || len(data) == 0 {
 		return nil, errors.New("data is empty")
 	}
-	var secrets []map[string][]byte
+	var res []map[string]string
 	for _, v := range data {
 		s := new(v1.Secret)
 		err := json.Unmarshal([]byte(v), s)
 		if err != nil {
 			return nil, err
 		}
-		secrets = append(secrets, (*s).Data)
+		singleSecretData := map[string]string{}
+		if s.Data != nil && len(s.Data) > 0 {
+			for k, v := range s.Data {
+				bytes, err := base64.StdEncoding.DecodeString(string(v))
+				if err == nil {
+					singleSecretData[k] = string(bytes)
+				} else {
+					singleSecretData[k] = string(v)
+				}
+			}
+		} else {
+			for k, v := range s.StringData {
+				bytes, err := base64.StdEncoding.DecodeString(v)
+				if err == nil {
+					singleSecretData[k] = string(bytes)
+				} else {
+					singleSecretData[k] = v
+				}
+			}
+		}
+		res = append(res, singleSecretData)
 	}
-	return secrets, nil
+	return res, nil
 }
