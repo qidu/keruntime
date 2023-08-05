@@ -53,10 +53,3 @@ type ObjectResp struct {
 	Object metaV1.Object
 	Err    error
 }
-
-// Native app start command path and arguments
-type AppCommand struct {
-	Action string
-	Path   string
-	Args   string
-}
