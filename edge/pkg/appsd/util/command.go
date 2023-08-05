@@ -2,9 +2,11 @@ package util
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 	"syscall"
 	"time"
 
@@ -19,9 +21,9 @@ const (
 // Native app start command path and arguments
 type AppCommand struct {
 	Action string
-	Path   string
-	Args   []string
-	Envs   []string
+	Path   string       // absolute executable command path
+	Args   []string     // native app args
+	Envs   []string     // environment variables
 }
 
 func CheckCmdExists(cmd string) (bool, error) {
@@ -100,8 +102,13 @@ Loop:
 	return nil
 }
 
-//find process that match the executable command
+//find process that match the absolute executable command path
 func FindProcess(path string) (*process.Process, error) {
+	firstIndex := strings.Index(path, "/")
+	if firstIndex != 0 {
+		err := errors.New("executable command must be absolute path")
+		return nil, err
+	}
 	var targetProcess *process.Process 
 	processes, err := process.Processes()
 	if err != nil {
@@ -117,8 +124,11 @@ func FindProcess(path string) (*process.Process, error) {
 	return targetProcess, nil
 }
 
-func GenerateCommand(args []string) AppCommand {
-	appCommand := AppCommand{}
+func GenerateCommand(args []string) *AppCommand {
+	if args == nil || len(args) == 0 {
+		return nil
+	}
+	appCommand := &AppCommand{}
 	pathIndex := -1
 	for index, arg := range args {
 		if ok, _ := CheckCmdExists(arg); ok {

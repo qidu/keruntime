@@ -228,20 +228,24 @@ func (a *appsd) handleApp(msg *model.Message) {
 		}
 	}
 	appCommand := util.GenerateCommand(args)
+	if appCommand == nil {
+		klog.Error("app command is nil")
+		return 
+	}
 	operationKey := fmt.Sprintf("%s:%s:%s", pod.Namespace, 
 		pod.Name, appCommand.Path)
 
 	switch msg.GetOperation() {
 	case model.InsertOperation:
 		processMsg(operationKey, customUuid, func() {
-			err = a.startApp(appCommand)
+			err = a.startApp(*appCommand)
 			if err != nil {
 				operationMap.Delete(operationKey)
 				klog.Errorf("start app failed:%v", err)
 			}
 		})
 	case model.DeleteOperation:
-		err = a.StopApp(appCommand)
+		err = a.StopApp(*appCommand)
 		if err != nil {
 			klog.Errorf("delete app failed:%v", err)
 			return
@@ -251,7 +255,7 @@ func (a *appsd) handleApp(msg *model.Message) {
 		}
 	case model.UpdateOperation:
 		processMsg(operationKey, customUuid, func() {
-			err = a.updateApp(appCommand)
+			err = a.updateApp(*appCommand)
 			if err != nil {
 				operationMap.Delete(operationKey)
 				klog.Errorf("start app failed:%v", err)
