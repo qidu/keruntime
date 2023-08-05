@@ -310,7 +310,7 @@ func (e *edged) handlePod(op string, content []byte, updatesChan chan<- interfac
 				klog.V(4).InfoS("Receive message of deleting pods", "pods", klog.KObjs(pods))
 			}
 			info = model.NewMessage("").BuildRouter(e.Name(), e.Group(), e.namespace+"/"+model.ResourceTypePod,
-				op).FillBody(pods[0].Spec.Containers[0].Args)
+				op).FillBody(*pods[0])
 			if info != nil {
 				beehiveContext.Send(modules.AppsdModuleName, *info)
 			}

@@ -41,7 +41,6 @@ import (
 	"github.com/kubeedge/kubeedge/edge/pkg/common/message"
 	"github.com/kubeedge/kubeedge/edge/pkg/common/modules"
 	"github.com/kubeedge/kubeedge/pkg/apis/componentconfig/edgecore/v1alpha2"
-	commonType "github.com/kubeedge/kubeedge/common/types"
 )
 
 // appsd is the main appsd implementation.
@@ -197,7 +196,6 @@ func queryConfigHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 func (a *appsd) handleApp(msg *model.Message) {
-	// todo: optimize code
 	resource := msg.GetResource()
 	r := strings.Split(resource, "/")
 	if len(r) != 2 {
@@ -210,44 +208,54 @@ func (a *appsd) handleApp(msg *model.Message) {
 		klog.Errorf("get message content data failed: %v", err)
 		return
 	}
-
-	var args []string
-	if err := json.Unmarshal(content, &args); err != nil {
-		m := "error to parse app command"
-		klog.Errorf(m)
+	
+	var pod v1.Pod
+	if err := json.Unmarshal(content, &pod); err != nil {
+		m := "failed to parse pod"
+		klog.Error(m)
 		return
 	}
 
-	var appCommand commonType.AppCommand
-	appCommand.Action = msg.GetOperation()
-	appCommand.Path = args[0]
-	if len(args) > 1 {
-		appCommand.Args = args[1]
+	var args []string
+	if pod.Spec.Containers[0].Args != nil && len(pod.Spec.Containers[0].Args) > 0 {
+		args = pod.Spec.Containers[0].Args
 	}
-
-	operationKey := appCommand.Path + appCommand.Args
+	customUuid := ""
+	if pod.Labels != nil {
+		uuid, ok := pod.Labels["uuid"]
+		if ok {
+			customUuid = uuid
+		}
+	}
+	appCommand := util.GenerateCommand(args)
+	if appCommand == nil {
+		klog.Error("app command is nil")
+		return 
+	}
+	operationKey := fmt.Sprintf("%s:%s:%s", pod.Namespace, 
+		pod.Name, appCommand.Path)
 
 	switch msg.GetOperation() {
 	case model.InsertOperation:
-		processMsg(operationKey, func() {
-			err = a.startApp(appCommand)
+		processMsg(operationKey, customUuid, func() {
+			err = a.startApp(*appCommand)
 			if err != nil {
 				operationMap.Delete(operationKey)
 				klog.Errorf("start app failed:%v", err)
 			}
 		})
 	case model.DeleteOperation:
-		err = a.StopApp(appCommand)
+		err = a.StopApp(*appCommand)
 		if err != nil {
 			klog.Errorf("delete app failed:%v", err)
+			return
 		}
 		if _, ok := operationMap.Load(operationKey); ok {
 			operationMap.Delete(operationKey)
-			return
 		}
 	case model.UpdateOperation:
-		processMsg(operationKey, func() {
-			err = a.updateApp(appCommand)
+		processMsg(operationKey, customUuid, func() {
+			err = a.updateApp(*appCommand)
 			if err != nil {
 				operationMap.Delete(operationKey)
 				klog.Errorf("start app failed:%v", err)
@@ -259,41 +267,48 @@ func (a *appsd) handleApp(msg *model.Message) {
 	return
 }
 
-func (a *appsd) startApp(appCommand commonType.AppCommand) error {
-	err := util.StartProcess(appCommand.Path, appCommand.Args)
+func (a *appsd) startApp(appCommand util.AppCommand) error {
+	err := util.StartProcess(appCommand)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (a *appsd) StopApp(appCommand commonType.AppCommand) error {
-	err := util.StopProcess(appCommand.Path)
+func (a *appsd) StopApp(appCommand util.AppCommand) error {
+	err := util.StopProcess(appCommand)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (a *appsd) updateApp(appCommand commonType.AppCommand) error {
-	//todo: add code
-	err := util.StartProcess(appCommand.Path, appCommand.Args)
+func (a *appsd) updateApp(appCommand util.AppCommand) error {
+	targetProcess, err := util.FindProcess(appCommand.Path)
+	if err != nil {
+		return err
+	}
+	if targetProcess != nil {
+		err = util.StopProcess(appCommand)
+		if err != nil {
+			klog.Errorf("stop process %s failed:%v", appCommand.Path, err)
+			return err
+		} 
+	}
+	err = util.StartProcess(appCommand)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func processMsg(operationKey string, operationFunc func()) {
-	if _, ok := operationMap.Load(operationKey); ok {
-		return
+func processMsg(operationKey, newUuid string, operationFunc func()) {
+	oldUuid, ok := operationMap.Load(operationKey); 
+	if ok && (newUuid == oldUuid) {
+		return 
 	}
-	defer operationMap.Delete(operationKey)
-	operationMap.Store(operationKey, true)
-
+	operationMap.Store(operationKey, newUuid)
 	operationFunc()
-	// wait for all duplicate messages to disappear and avoid duplicate execution
-	time.Sleep(5 * time.Second)
 }
 
 func formatConfigmapResp(data []string) (map[string]string, error) {
