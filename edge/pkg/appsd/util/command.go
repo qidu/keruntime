@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
@@ -37,6 +38,11 @@ func CheckCmdExists(cmd string) (bool, error) {
 
 func StartProcess(command AppCommand) error {
 	var err error
+	isAbs := filepath.IsAbs(command.Path)
+	if !isAbs {
+		err := errors.New("executable command must be absolute path")
+		return err
+	}
 	if ok, err := CheckCmdExists(command.Path); !ok {
 		return err
 	}
@@ -60,8 +66,13 @@ func StartProcess(command AppCommand) error {
 }
 
 func StopProcess(command AppCommand) error {
-	path := command.Path
+	isAbs := filepath.IsAbs(command.Path)
+	if !isAbs {
+		err := errors.New("executable command must be absolute path")
+		return err
+	}
 
+	path := command.Path
 	targetProcess, err := FindProcess(path)
 	if err != nil {
 		return err
@@ -104,8 +115,8 @@ Loop:
 
 //find process that match the absolute executable command path
 func FindProcess(path string) (*process.Process, error) {
-	firstIndex := strings.Index(path, "/")
-	if firstIndex != 0 {
+	isAbs := filepath.IsAbs(path)
+	if !isAbs {
 		err := errors.New("executable command must be absolute path")
 		return nil, err
 	}
