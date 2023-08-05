@@ -28,6 +28,11 @@ type AppCommand struct {
 }
 
 func CheckCmdExists(cmd string) (bool, error) {
+	isAbs := filepath.IsAbs(cmd)
+	if !isAbs {
+		err := errors.New("executable command must be absolute path")
+		return false, err
+	}
 	_, err := exec.LookPath(cmd)
 	if err != nil {
 		klog.Errorf("cannot find command:%s\n", cmd)
@@ -38,11 +43,6 @@ func CheckCmdExists(cmd string) (bool, error) {
 
 func StartProcess(command AppCommand) error {
 	var err error
-	isAbs := filepath.IsAbs(command.Path)
-	if !isAbs {
-		err := errors.New("executable command must be absolute path")
-		return err
-	}
 	if ok, err := CheckCmdExists(command.Path); !ok {
 		return err
 	}
@@ -66,12 +66,6 @@ func StartProcess(command AppCommand) error {
 }
 
 func StopProcess(command AppCommand) error {
-	isAbs := filepath.IsAbs(command.Path)
-	if !isAbs {
-		err := errors.New("executable command must be absolute path")
-		return err
-	}
-
 	path := command.Path
 	targetProcess, err := FindProcess(path)
 	if err != nil {
