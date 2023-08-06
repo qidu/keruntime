@@ -114,7 +114,7 @@ type CloudHub struct {
 	// default 30
 	KeepaliveInterval int32 `json:"keepaliveInterval,omitempty"`
 	// NodeLimit is a maximum number of edge node that can connect to the single CloudCore
-	// default 1000
+	// default 1000         // TODO: tune NodeLimit
 	NodeLimit int32 `json:"nodeLimit,omitempty"`
 	// TLSCAFile indicates ca file path
 	// default "/etc/kubeedge/ca/rootCA.crt"

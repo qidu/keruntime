@@ -50,7 +50,7 @@ func NewDefaultCloudCoreConfig() *CloudCoreConfig {
 			CloudHub: &CloudHub{
 				Enable:                  true,
 				KeepaliveInterval:       30,
-				NodeLimit:               constants.DefaultNodeLimit,
+				NodeLimit:               constants.DefaultNodeLimit,        // TODO: tune NodeLimit
 				TLSCAFile:               constants.DefaultCAFile,
 				TLSCAKeyFile:            constants.DefaultCAKeyFile,
 				TLSCertFile:             constants.DefaultCertFile,
@@ -64,7 +64,7 @@ func NewDefaultCloudCoreConfig() *CloudCoreConfig {
 					Enable:             false,
 					Address:            "0.0.0.0",
 					Port:               10001,
-					MaxIncomingStreams: 10000,
+					MaxIncomingStreams: 10000,                        // TODO: tune MaxIncomingStreams
 				},
 				UnixSocket: &CloudHubUnixSocket{
 					Enable:  true,

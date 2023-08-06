@@ -94,7 +94,7 @@ const (
 	DefaultKubeNamespace           = v1.NamespaceAll
 	DefaultKubeQPS                 = 100.0
 	DefaultKubeBurst               = 200
-	DefaultNodeLimit               = 500
+	DefaultNodeLimit               = 500                              // TODO: tune NodeLimit
 	DefaultKubeUpdateNodeFrequency = 20
 
 	// EdgeController
