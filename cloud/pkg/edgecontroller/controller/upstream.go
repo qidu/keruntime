@@ -1387,8 +1387,9 @@ func (uc *UpstreamController) nodeMsgResponse(nodeName, namespace, content strin
 	}
 }
 
+// TODO:  the NodeDisconnection callback needs to be configed in CloudCore
 func (uc *UpstreamController) getNodeDisconnectNotifyUrl() string {
-	notifyUrl := fmt.Sprintf("%s://%s:%d%s", uc.config.NotifyNodeDisconnect.Schema,
+	notifyUrl := fmt.Sprintf("%s://%s:%d%s", uc.config.NotifyNodeDisconnect.Schema, 
 	uc.config.NotifyNodeDisconnect.Address, uc.config.NotifyNodeDisconnect.Port, uc.config.NotifyNodeDisconnect.Path)
 	return notifyUrl
 }

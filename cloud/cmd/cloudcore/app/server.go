@@ -79,7 +79,7 @@ kubernetes controller which manages devices so that the device metadata/status d
 				klog.Exit(util.SpliceErrors(errs))
 			}
 
-			config, err := opts.Config()
+			config, err := opts.Config() // TODO: add config options
 			if err != nil {
 				klog.Exit(err)
 			}

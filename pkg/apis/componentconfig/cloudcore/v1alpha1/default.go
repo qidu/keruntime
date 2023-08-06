@@ -89,7 +89,7 @@ func NewDefaultCloudCoreConfig() *CloudCoreConfig {
 				NotifyNodeDisconnect: &NotifyNodeDisconnectConfig{
 					Schema:  "http",
 					Address: "127.0.0.1",
-					Port:    8088,
+					Port:    8088,                                     // TODO: Need to config for Address, Port and Path of the Notification
 					Path:    "/api/v1/nodeDisconnect",
 				},
 			},
@@ -134,7 +134,7 @@ func NewDefaultCloudCoreConfig() *CloudCoreConfig {
 			Router: &Router{
 				Enable:      false,
 				Address:     "0.0.0.0",
-				Port:        9443,
+				Port:        9443,                   // TODO: Need to config the Router Port
 				RestTimeout: 60,
 			},
 			IptablesManager: &IptablesManager{
