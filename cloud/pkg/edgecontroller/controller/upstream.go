@@ -243,6 +243,7 @@ func (uc *UpstreamController) dispatchMessage() {
 				uc.queryNodeChan <- msg
 			case model.UpdateOperation:
 				uc.updateNodeChan <- msg
+			// TODO: ADD THE case common.NodeConnectOperation:
 			case common.NodeDisConnectOperation:
 				uc.nodeDisconnectedChan <- msg
 			default:
