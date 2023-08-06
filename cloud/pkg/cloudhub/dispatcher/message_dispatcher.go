@@ -521,6 +521,7 @@ func (md *messageDispatcher) Publish(msg *beehivemodel.Message) error {
 		beehivecontext.Send(modules.DynamicControllerModuleName, *msg)
 	case model.ResTwin:
 		beehivecontext.SendToGroup(modules.DeviceControllerModuleGroup, *msg)
+	// TODO: NodeDisconnect/NodeConnect
 	default:
 		beehivecontext.SendToGroup(modules.EdgeControllerGroupName, *msg)
 	}

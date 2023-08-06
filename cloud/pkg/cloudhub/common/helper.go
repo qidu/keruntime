@@ -82,7 +82,7 @@ func TrimMessage(msg *beehivemodel.Message) {
 }
 
 func ConstructConnectMessage(info *model.HubInfo, isConnected bool) *beehivemodel.Message {
-	connected := model.OpConnect
+	connected := model.OpConnect  // TODO: handle a NodeConnect Event
 	if !isConnected {
 		connected = model.OpDisConnect
 	}
