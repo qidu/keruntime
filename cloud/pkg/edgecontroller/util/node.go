@@ -2,24 +2,18 @@ package util
 
 import (
 	"context"
+
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
 
 	"github.com/kubeedge/kubeedge/cloud/pkg/common/client"
 	"github.com/kubeedge/kubeedge/cloud/pkg/edgecontroller/constants"
 )
 
-var (
-	kubeClient kubernetes.Interface
-)
-
-func init() {
-	kubeClient = client.GetKubeClient()
-}
 
 //return names of edge node in ready state
 func GetEdgeNodes() ([]string, error) {
+	kubeClient := client.GetKubeClient()
 	nodeList, err := kubeClient.CoreV1().Nodes().List(context.Background(), metaV1.ListOptions{})
 	if err != nil {
 		klog.Warningf("query edge nodes failed:%v", err)

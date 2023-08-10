@@ -120,8 +120,7 @@ type UpstreamController struct {
 	ruleStatusChan            chan model.Message
 	createLeaseChan           chan model.Message
 	queryLeaseChan            chan model.Message
-	nodeConnectedChan         chan model.Message
-	nodeDisconnectedChan      chan model.Message
+	reportNodeConnectionChan  chan model.Message
 
 	// lister
 	podLister       corelisters.PodLister
@@ -188,11 +187,8 @@ func (uc *UpstreamController) Start() error {
 	for i := 0; i < int(uc.config.Load.UpdateRuleStatusWorkers); i++ {
 		go uc.updateRuleStatus()
 	}
-	for i := 0; i < int(uc.config.Load.NodeConnectWorks); i++ {
-		go uc.reportNodeConnect()
-	}
-	for i := 0; i < int(uc.config.Load.NodeDisconnectWorks); i++ {
-		go uc.reportNodeDisconnect()
+	for i := 0; i < int(uc.config.Load.ReportNodeConnectionStatusWorks); i++ {
+		go uc.reportNodeConnectionStatus()
 	}
 	return nil
 }
@@ -248,9 +244,9 @@ func (uc *UpstreamController) dispatchMessage() {
 			case model.UpdateOperation:
 				uc.updateNodeChan <- msg
 			case common.NodeConnectOperation:
-				uc.nodeConnectedChan <- msg
+				uc.reportNodeConnectionChan <- msg
 			case common.NodeDisConnectOperation:
-				uc.nodeDisconnectedChan <- msg
+				uc.reportNodeConnectionChan <- msg
 			default:
 				klog.Errorf("message: %s, operation type: %s unsupported", msg.GetID(), msg.GetOperation())
 			}
@@ -279,60 +275,35 @@ func (uc *UpstreamController) dispatchMessage() {
 	}
 }
 
-func (uc *UpstreamController) reportNodeConnect() {
+func (uc *UpstreamController) reportNodeConnectionStatus() {
 	for {
 		select {
 		case <-beehiveContext.Done():
-			klog.Warning("stop reportNodeConnect")
+			klog.Warning("stop reportNodeConnectionStatus")
 			return
-		case msg := <- uc.nodeConnectedChan:
+		case msg := <- uc.reportNodeConnectionChan:
 			content, err := msg.GetContentData()
 			if err != nil {
 				klog.Errorf("get message content data failed: %v", err)
 				continue
 			}
-			req, err := httpUtils.BuildRequest(http.MethodPost, uc.getNodeConnectionReportUrl(), bytes.NewReader(content), "", "")
+			nodeId, err := messagelayer.GetNodeID(msg)
 			if err != nil {
-				klog.Errorf("build node connect report http request failed: %v", err)
+				klog.Errorf("get node id from message failed:%v", err)
+				continue
+			}
+			req, err := httpUtils.BuildRequest(http.MethodPost, uc.getNodeConnectionReportUrl(), bytes.NewReader(content), "", nodeId)
+			if err != nil {
+				klog.Errorf("build node connection status report http request failed: %v", err)
 				continue
 			}
 			resp, err := httpUtils.SendRequest(req, uc.httpClient)
 			if err != nil {
-				klog.Errorf("send node connect report http request failed: %v", err)
+				klog.Errorf("send node connection status report http request failed: %v", err)
 				continue
 			}
 			if resp.StatusCode == http.StatusOK {
-				klog.Info("report node connect successfully!")
-			}
-		}
-
-	}
-}
-
-func (uc *UpstreamController) reportNodeDisconnect() {
-	for {
-		select {
-		case <-beehiveContext.Done():
-			klog.Warning("stop reportNodeDisconnect")
-			return
-		case msg := <-uc.nodeDisconnectedChan:
-			content, err := msg.GetContentData()
-			if err != nil {
-				klog.Errorf("get message content data failed: %v", err)
-				continue
-			}
-			req, err := httpUtils.BuildRequest(http.MethodPost, uc.getNodeConnectionReportUrl(), bytes.NewReader(content), "", "")
-			if err != nil {
-				klog.Errorf("build node disconnect report http request failed: %v", err)
-				continue
-			}
-			resp, err := httpUtils.SendRequest(req, uc.httpClient)
-			if err != nil {
-				klog.Errorf("send node disconnect report http request failed: %v", err)
-				continue
-			}
-			if resp.StatusCode == http.StatusOK {
-				klog.Info("report node disconnect successfully!")
+				klog.Info("report node connection status successfully!")
 			}
 		}
 	}
@@ -1460,7 +1431,6 @@ func NewUpstreamController(config *v1alpha1.EdgeController, factory k8sinformer.
 	uc.createLeaseChan = make(chan model.Message, config.Buffer.CreateLease)
 	uc.queryLeaseChan = make(chan model.Message, config.Buffer.QueryLease)
 	uc.ruleStatusChan = make(chan model.Message, config.Buffer.UpdateNodeStatus)
-	uc.nodeConnectedChan = make(chan model.Message, config.Buffer.NodeConnect)
-	uc.nodeDisconnectedChan = make(chan model.Message, config.Buffer.NodeDisconnect)
+	uc.reportNodeConnectionChan = make(chan model.Message, config.Buffer.ReportNode)
 	return uc, nil
 }

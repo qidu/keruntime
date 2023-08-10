@@ -169,8 +169,7 @@ func getDefaultEdgeControllerLoad(nodeLimit int32) *EdgeControllerLoad {
 		QueryLeaseWorkers:                 constants.DefaultQueryLeaseWorkers,
 		UpdateRuleStatusWorkers:           constants.DefaultUpdateRuleStatusWorkers,
 		ServiceAccountTokenWorkers:        constants.DefaultServiceAccountTokenWorkers,
-		NodeDisconnectWorks:               constants.DefaultNodeDisconnectWorks,
-		NodeConnectWorks: 				   constants.DefaultNodeConnectWorks,
+		ReportNodeConnectionStatusWorks:   constants.DefaultReportNodeConnectionStatusWorks,
 	}
 }
 
@@ -198,8 +197,7 @@ func getDefaultEdgeControllerBuffer(nodeLimit int32) *EdgeControllerBuffer {
 		CreateLease:                1024 + nodeLimit,
 		QueryLease:                 constants.DefaultQueryLeaseBuffer,
 		ServiceAccountToken:        constants.DefaultServiceAccountTokenBuffer,
-		NodeConnect:				constants.DefaultNodeConnectBuffer,		
-		NodeDisconnect:             constants.DefaultNodeDisconnectBuffer,
+		ReportNode: 				constants.DefaultReportNodeConnectionStatusBuffer,
 	}
 }
 
