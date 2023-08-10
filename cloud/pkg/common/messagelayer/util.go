@@ -91,7 +91,8 @@ func GetNamespace(msg model.Message) (string, error) {
 func GetResourceType(msg model.Message) (string, error) {
 	res := getElementByIndex(msg, ResourceResourceTypeIndex)
 	if res == "" {
-		if msg.GetOperation() == constants.NodeDisConnectOperation {
+		opr := msg.GetOperation()
+		if opr == constants.NodeDisConnectOperation || opr == constants.NodeConnectOperation {
 			res = getElementByIndex(msg, 0)
 			return res, nil
 		}

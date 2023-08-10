@@ -113,6 +113,7 @@ const (
 	DefaultQueryLeaseWorkers                 = 100
 	DefaultServiceAccountTokenWorkers        = 100
 	DefaultNodeDisconnectWorks				 = 4
+	DefaultNodeConnectWorks					 = 4
 
 	DefaultUpdatePodStatusBuffer            = 1024
 	DefaultUpdateNodeStatusBuffer           = 1024
@@ -128,6 +129,7 @@ const (
 	DefaultQueryLeaseBuffer                 = 1024
 	DefaultServiceAccountTokenBuffer        = 1024
 	DefaultNodeDisconnectBuffer   			= 1024
+	DefaultNodeConnectBuffer				= 1024
 
 	DefaultPodEventBuffer           = 1
 	DefaultConfigMapEventBuffer     = 1
@@ -148,6 +150,10 @@ const (
 
 	//node disconnect operation
 	NodeDisConnectOperation = "disconnected"
+	NodeConnectOperation = "connected"
+
+	//node connect or disconnect status report url
+	DefaultNodeConnectionReportPath    =  "/api/v1/nodeconnectionreport"
 
 	// Resource sep
 	ResourceSep = "/"

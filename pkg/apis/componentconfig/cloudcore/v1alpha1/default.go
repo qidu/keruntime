@@ -86,11 +86,11 @@ func NewDefaultCloudCoreConfig() *CloudCoreConfig {
 				NodeUpdateFrequency: 10,
 				Buffer:              getDefaultEdgeControllerBuffer(constants.DefaultNodeLimit),
 				Load:                getDefaultEdgeControllerLoad(constants.DefaultNodeLimit),
-				NotifyNodeDisconnect: &NotifyNodeDisconnectConfig{
+				ReportNodeConnectionStatusConfig: &ReportNodeConnectionStatusConfig{
 					Schema:  "http",
 					Address: "127.0.0.1",
-					Port:    8088,                                     // TODO: Need to config for Address, Port and Path of the Notification
-					Path:    "/api/v1/nodeDisconnect",
+					Port:    8088,                                     
+					ReportPath:     constants.DefaultNodeConnectionReportPath,
 				},
 			},
 			DeviceController: &DeviceController{
@@ -170,6 +170,7 @@ func getDefaultEdgeControllerLoad(nodeLimit int32) *EdgeControllerLoad {
 		UpdateRuleStatusWorkers:           constants.DefaultUpdateRuleStatusWorkers,
 		ServiceAccountTokenWorkers:        constants.DefaultServiceAccountTokenWorkers,
 		NodeDisconnectWorks:               constants.DefaultNodeDisconnectWorks,
+		NodeConnectWorks: 				   constants.DefaultNodeConnectWorks,
 	}
 }
 
@@ -197,6 +198,7 @@ func getDefaultEdgeControllerBuffer(nodeLimit int32) *EdgeControllerBuffer {
 		CreateLease:                1024 + nodeLimit,
 		QueryLease:                 constants.DefaultQueryLeaseBuffer,
 		ServiceAccountToken:        constants.DefaultServiceAccountTokenBuffer,
+		NodeConnect:				constants.DefaultNodeConnectBuffer,		
 		NodeDisconnect:             constants.DefaultNodeDisconnectBuffer,
 	}
 }

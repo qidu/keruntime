@@ -120,6 +120,7 @@ type UpstreamController struct {
 	ruleStatusChan            chan model.Message
 	createLeaseChan           chan model.Message
 	queryLeaseChan            chan model.Message
+	nodeConnectedChan         chan model.Message
 	nodeDisconnectedChan      chan model.Message
 
 	// lister
@@ -187,8 +188,11 @@ func (uc *UpstreamController) Start() error {
 	for i := 0; i < int(uc.config.Load.UpdateRuleStatusWorkers); i++ {
 		go uc.updateRuleStatus()
 	}
+	for i := 0; i < int(uc.config.Load.NodeConnectWorks); i++ {
+		go uc.reportNodeConnect()
+	}
 	for i := 0; i < int(uc.config.Load.NodeDisconnectWorks); i++ {
-		go uc.notifyNodeDisconnect()
+		go uc.reportNodeDisconnect()
 	}
 	return nil
 }
@@ -243,7 +247,8 @@ func (uc *UpstreamController) dispatchMessage() {
 				uc.queryNodeChan <- msg
 			case model.UpdateOperation:
 				uc.updateNodeChan <- msg
-			// TODO: ADD THE case common.NodeConnectOperation:
+			case common.NodeConnectOperation:
+				uc.nodeConnectedChan <- msg
 			case common.NodeDisConnectOperation:
 				uc.nodeDisconnectedChan <- msg
 			default:
@@ -274,11 +279,41 @@ func (uc *UpstreamController) dispatchMessage() {
 	}
 }
 
-func (uc *UpstreamController) notifyNodeDisconnect() {
+func (uc *UpstreamController) reportNodeConnect() {
 	for {
 		select {
 		case <-beehiveContext.Done():
-			klog.Warning("stop notifyNodeDisconnect")
+			klog.Warning("stop reportNodeConnect")
+			return
+		case msg := <- uc.nodeConnectedChan:
+			content, err := msg.GetContentData()
+			if err != nil {
+				klog.Errorf("get message content data failed: %v", err)
+				continue
+			}
+			req, err := httpUtils.BuildRequest(http.MethodPost, uc.getNodeConnectionReportUrl(), bytes.NewReader(content), "", "")
+			if err != nil {
+				klog.Errorf("build node connect report http request failed: %v", err)
+				continue
+			}
+			resp, err := httpUtils.SendRequest(req, uc.httpClient)
+			if err != nil {
+				klog.Errorf("send node connect report http request failed: %v", err)
+				continue
+			}
+			if resp.StatusCode == http.StatusOK {
+				klog.Info("report node connect successfully!")
+			}
+		}
+
+	}
+}
+
+func (uc *UpstreamController) reportNodeDisconnect() {
+	for {
+		select {
+		case <-beehiveContext.Done():
+			klog.Warning("stop reportNodeDisconnect")
 			return
 		case msg := <-uc.nodeDisconnectedChan:
 			content, err := msg.GetContentData()
@@ -286,18 +321,18 @@ func (uc *UpstreamController) notifyNodeDisconnect() {
 				klog.Errorf("get message content data failed: %v", err)
 				continue
 			}
-			req, err := httpUtils.BuildRequest(http.MethodPost, uc.getNodeDisconnectNotifyUrl(), bytes.NewReader(content), "", "")
+			req, err := httpUtils.BuildRequest(http.MethodPost, uc.getNodeConnectionReportUrl(), bytes.NewReader(content), "", "")
 			if err != nil {
-				klog.Errorf("build node disconnect notify http request failed: %v", err)
+				klog.Errorf("build node disconnect report http request failed: %v", err)
 				continue
 			}
 			resp, err := httpUtils.SendRequest(req, uc.httpClient)
 			if err != nil {
-				klog.Errorf("send node disconnect notify http request failed: %v", err)
+				klog.Errorf("send node disconnect report http request failed: %v", err)
 				continue
 			}
 			if resp.StatusCode == http.StatusOK {
-				klog.Info("notify node disconnect successfully!")
+				klog.Info("report node disconnect successfully!")
 			}
 		}
 	}
@@ -1387,17 +1422,17 @@ func (uc *UpstreamController) nodeMsgResponse(nodeName, namespace, content strin
 	}
 }
 
-// TODO:  the NodeDisconnection callback needs to be configed in CloudCore
-func (uc *UpstreamController) getNodeDisconnectNotifyUrl() string {
-	notifyUrl := fmt.Sprintf("%s://%s:%d%s", uc.config.NotifyNodeDisconnect.Schema, 
-	uc.config.NotifyNodeDisconnect.Address, uc.config.NotifyNodeDisconnect.Port, uc.config.NotifyNodeDisconnect.Path)
-	return notifyUrl
+func (uc *UpstreamController) getNodeConnectionReportUrl() string {
+	reportUrl := fmt.Sprintf("%s://%s:%d%s", uc.config.ReportNodeConnectionStatusConfig.Schema, uc.config.ReportNodeConnectionStatusConfig.Address, 
+		uc.config.ReportNodeConnectionStatusConfig.Port, uc.config.ReportNodeConnectionStatusConfig.ReportPath)
+	return reportUrl
 }
 
 // NewUpstreamController create UpstreamController from config
 func NewUpstreamController(config *v1alpha1.EdgeController, factory k8sinformer.SharedInformerFactory) (*UpstreamController, error) {
 	uc := &UpstreamController{
 		kubeClient:   client.GetKubeClient(),
+		httpClient:   httpUtils.NewHTTPClient(),
 		messageLayer: messagelayer.EdgeControllerMessageLayer(),
 		crdClient:    client.GetCRDClient(),
 		config:       *config,
@@ -1425,5 +1460,7 @@ func NewUpstreamController(config *v1alpha1.EdgeController, factory k8sinformer.
 	uc.createLeaseChan = make(chan model.Message, config.Buffer.CreateLease)
 	uc.queryLeaseChan = make(chan model.Message, config.Buffer.QueryLease)
 	uc.ruleStatusChan = make(chan model.Message, config.Buffer.UpdateNodeStatus)
+	uc.nodeConnectedChan = make(chan model.Message, config.Buffer.NodeConnect)
+	uc.nodeDisconnectedChan = make(chan model.Message, config.Buffer.NodeDisconnect)
 	return uc, nil
 }
