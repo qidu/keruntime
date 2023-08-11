@@ -120,7 +120,7 @@ type UpstreamController struct {
 	ruleStatusChan            chan model.Message
 	createLeaseChan           chan model.Message
 	queryLeaseChan            chan model.Message
-	reportNodeConnectionChain chan model.Message
+	reportNodeConnectionChan  chan model.Message
 
 	// lister
 	podLister       corelisters.PodLister
@@ -244,9 +244,9 @@ func (uc *UpstreamController) dispatchMessage() {
 			case model.UpdateOperation:
 				uc.updateNodeChan <- msg
 			case common.NodeConnectOperation:
-				uc.reportNodeConnectionChain <- msg
+				uc.reportNodeConnectionChan <- msg
 			case common.NodeDisConnectOperation:
-				uc.reportNodeConnectionChain <- msg
+				uc.reportNodeConnectionChan <- msg
 			default:
 				klog.Errorf("message: %s, operation type: %s unsupported", msg.GetID(), msg.GetOperation())
 			}
@@ -281,7 +281,7 @@ func (uc *UpstreamController) reportNodeConnectionStatus() {
 		case <-beehiveContext.Done():
 			klog.Warning("stop reportNodeConnectionStatus")
 			return
-		case msg := <- uc.reportNodeConnectionChain:
+		case msg := <- uc.reportNodeConnectionChan:
 			content, err := msg.GetContentData()
 			if err != nil {
 				klog.Errorf("get message content data failed: %v", err)
@@ -1431,6 +1431,6 @@ func NewUpstreamController(config *v1alpha1.EdgeController, factory k8sinformer.
 	uc.createLeaseChan = make(chan model.Message, config.Buffer.CreateLease)
 	uc.queryLeaseChan = make(chan model.Message, config.Buffer.QueryLease)
 	uc.ruleStatusChan = make(chan model.Message, config.Buffer.UpdateNodeStatus)
-	uc.reportNodeConnectionChain = make(chan model.Message, config.Buffer.ReportNode)
+	uc.reportNodeConnectionChan = make(chan model.Message, config.Buffer.ReportNode)
 	return uc, nil
 }
