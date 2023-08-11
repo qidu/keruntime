@@ -87,9 +87,8 @@ func ConstructConnectMessage(info *model.HubInfo, isConnected bool) *beehivemode
 		connected = model.OpDisConnect
 	}
 	body := map[string]interface{}{
-		"event_type": connected,
+		"eventType": connected,
 		"timestamp":  time.Now().Unix(),
-		"client_id":  info.NodeID,
 	}
 	content, _ := json.Marshal(body)
 

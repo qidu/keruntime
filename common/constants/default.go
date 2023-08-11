@@ -112,8 +112,7 @@ const (
 	DefaultUpdateRuleStatusWorkers           = 4
 	DefaultQueryLeaseWorkers                 = 100
 	DefaultServiceAccountTokenWorkers        = 100
-	DefaultNodeDisconnectWorks				 = 4
-	DefaultNodeConnectWorks					 = 4
+	DefaultReportNodeConnectionStatusWorks   = 100
 
 	DefaultUpdatePodStatusBuffer            = 1024
 	DefaultUpdateNodeStatusBuffer           = 1024
@@ -128,8 +127,7 @@ const (
 	DefaultDeletePodBuffer                  = 1024
 	DefaultQueryLeaseBuffer                 = 1024
 	DefaultServiceAccountTokenBuffer        = 1024
-	DefaultNodeDisconnectBuffer   			= 1024
-	DefaultNodeConnectBuffer				= 1024
+	DefaultReportNodeConnectionStatusBuffer = 1024
 
 	DefaultPodEventBuffer           = 1
 	DefaultConfigMapEventBuffer     = 1
