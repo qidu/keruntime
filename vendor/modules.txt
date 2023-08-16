@@ -109,6 +109,9 @@ github.com/PuerkitoBio/purell
 # github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578
 ## explicit
 github.com/PuerkitoBio/urlesc
+# github.com/abrander/go-supervisord v0.0.0-20210517172913-a5469a4c50e2
+## explicit
+github.com/abrander/go-supervisord
 # github.com/armon/circbuf v0.0.0-20190214190532-5111143e8da2
 ## explicit
 github.com/armon/circbuf
@@ -548,6 +551,9 @@ github.com/klauspost/compress/internal/cpuinfo
 github.com/klauspost/compress/internal/snapref
 github.com/klauspost/compress/zstd
 github.com/klauspost/compress/zstd/internal/xxhash
+# github.com/kolo/xmlrpc v0.0.0-20220921171641-a4b6fa1dd06b
+## explicit; go 1.14
+github.com/kolo/xmlrpc
 # github.com/kubeedge/beehive v0.0.0 => ./staging/src/github.com/kubeedge/beehive
 ## explicit; go 1.17
 github.com/kubeedge/beehive/pkg/common

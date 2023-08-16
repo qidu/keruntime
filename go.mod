@@ -56,13 +56,17 @@ require (
 )
 
 require (
+	github.com/abrander/go-supervisord v0.0.0-20210517172913-a5469a4c50e2
 	github.com/pkg/errors v0.9.1
 	github.com/qbox/mikud-live v1.0.1-0.20230803024934-826f3a32a4fc
 	gopkg.in/square/go-jose.v2 v2.5.1
 	gopkg.in/yaml.v3 v3.0.1
 )
 
-require github.com/rs/zerolog v1.29.1 // indirect
+require (
+	github.com/kolo/xmlrpc v0.0.0-20220921171641-a4b6fa1dd06b // indirect
+	github.com/rs/zerolog v1.29.1 // indirect
+)
 
 require (
 	cloud.google.com/go v0.99.0 // indirect
@@ -197,7 +201,7 @@ require (
 	github.com/prometheus/procfs v0.7.3 // indirect
 	github.com/rubenv/sql-migrate v1.1.1 // indirect
 	github.com/russross/blackfriday v1.5.2 // indirect
-	github.com/satori/go.uuid v1.2.0
+	github.com/satori/go.uuid v1.2.0 // indirect
 	github.com/seccomp/libseccomp-golang v0.9.2-0.20220502022130-f33da4d89646 // indirect
 	github.com/shopspring/decimal v1.2.0 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
