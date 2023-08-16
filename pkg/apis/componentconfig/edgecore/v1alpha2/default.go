@@ -159,10 +159,12 @@ func NewDefaultEdgeCoreConfig() *EdgeCoreConfig {
 				WriteDeadline:           15,
 			},
 			Appsd: &Appsd{
-				Enable:                true,
-				Server:                "127.0.0.1",
-				Port:                  9080,
-				RegisterNodeNamespace: "default",
+				Enable:                    true,
+				Server:                    "127.0.0.1",
+				Port:                      9080,
+				RegisterNodeNamespace:     constants.DefaultRegisterNodeNamespace,
+				SupervisordEndpoint:       constants.DefaultSupervisordEndpoint,
+				SupervisordConfDir:        constants.DefaultSupervisordConfDir,
 			},
 		},
 	}

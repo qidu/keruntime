@@ -22,12 +22,14 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"strings"
-	"sync"
 	"fmt"
 	"net/http"
+	"os"
+	"strings"
+	"sync"
 	"time"
 
+	"github.com/abrander/go-supervisord"
 	v1 "k8s.io/api/core/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/klog/v2"
@@ -35,6 +37,7 @@ import (
 	"github.com/kubeedge/beehive/pkg/core"
 	beehiveContext "github.com/kubeedge/beehive/pkg/core/context"
 	model "github.com/kubeedge/beehive/pkg/core/model"
+	"github.com/kubeedge/kubeedge/common/constants"
 	appsdconfig "github.com/kubeedge/kubeedge/edge/pkg/appsd/config"
 	edgedconfig "github.com/kubeedge/kubeedge/edge/pkg/edged/config"
 	"github.com/kubeedge/kubeedge/edge/pkg/appsd/util"
@@ -51,10 +54,16 @@ type appsd struct {
 var (
 	_ core.Module = (*appsd)(nil)
 	operationMap sync.Map
+	supervisordClient *supervisord.Client
 )
 
 // newAppsd creates new appsd object and initialises it
 func newAppsd(enable bool) *appsd {
+	var err error
+	supervisordClient, err = supervisord.NewUnixSocketClient(appsdconfig.Config.SupervisordEndpoint)
+	if err != nil {
+		klog.Exitf("new supervisord client failed with error: %s", err)
+	}
 	return &appsd{
 		enable: enable,
 	}
@@ -156,11 +165,7 @@ func queryConfigHandler(w http.ResponseWriter, req *http.Request) {
 		util.ResponseError(http.StatusBadRequest, msg, w)
 		return
 	}
-	resource, err := message.BuildResource(edgedconfig.Config.HostnameOverride,
-		appsdconfig.Config.RegisterNodeNamespace, configType, appName, domain)
-	msg := model.NewMessage("").BuildRouter(modules.AppsdModuleName,
-			modules.AppsdGroup, resource, model.QueryOperation)
-	responseMessage, err := beehiveContext.SendSync(modules.MetaManagerModuleName, *msg, time.Second*10)
+	responseMessage, err := queryConfigFromMetaManager(configType, appName, domain)
 	if err != nil {
 		util.ResponseError(http.StatusBadRequest, err.Error(), w)
 		return
@@ -216,36 +221,37 @@ func (a *appsd) handleApp(msg *model.Message) {
 		return
 	}
 
-	var args []string
-	if pod.Spec.Containers[0].Args != nil && len(pod.Spec.Containers[0].Args) > 0 {
-		args = pod.Spec.Containers[0].Args
-	}
 	customUuid := ""
+	nativeApp := ""
 	if pod.Labels != nil {
 		uuid, ok := pod.Labels["uuid"]
 		if ok {
 			customUuid = uuid
 		}
+		appName, ok := pod.Labels["appName"]
+		if ok {
+			nativeApp = appName
+		}
 	}
-	appCommand := util.GenerateCommand(args)
-	if appCommand == nil {
-		klog.Error("app command is nil")
-		return 
+	if customUuid == "" || nativeApp == "" {
+		m := "must specify uuid and appName in pod labels"
+		klog.Error(m)
+		return
 	}
-	operationKey := fmt.Sprintf("%s:%s:%s", pod.Namespace, 
-		pod.Name, appCommand.Path)
 
+	operationKey := fmt.Sprintf("%s:%s:%s", pod.Namespace, 
+		pod.Name, nativeApp)
 	switch msg.GetOperation() {
 	case model.InsertOperation:
 		processMsg(operationKey, customUuid, func() {
-			err = a.startApp(*appCommand)
+			err = a.startApp(nativeApp)
 			if err != nil {
 				operationMap.Delete(operationKey)
 				klog.Errorf("start app failed:%v", err)
 			}
 		})
 	case model.DeleteOperation:
-		err = a.StopApp(*appCommand)
+		err = a.StopApp(nativeApp)
 		if err != nil {
 			klog.Errorf("delete app failed:%v", err)
 			return
@@ -255,7 +261,7 @@ func (a *appsd) handleApp(msg *model.Message) {
 		}
 	case model.UpdateOperation:
 		processMsg(operationKey, customUuid, func() {
-			err = a.updateApp(*appCommand)
+			err = a.updateApp(nativeApp)
 			if err != nil {
 				operationMap.Delete(operationKey)
 				klog.Errorf("start app failed:%v", err)
@@ -267,37 +273,100 @@ func (a *appsd) handleApp(msg *model.Message) {
 	return
 }
 
-func (a *appsd) startApp(appCommand util.AppCommand) error {
-	err := util.StartProcess(appCommand)
+func (a *appsd) startApp(appName string) error {
+	err := supervisordClient.StartProcess(appName, false)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (a *appsd) StopApp(appCommand util.AppCommand) error {
-	err := util.StopProcess(appCommand)
+func (a *appsd) StopApp(appName string) error {
+	err := supervisordClient.StopProcess(appName, false)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (a *appsd) updateApp(appCommand util.AppCommand) error {
-	targetProcess, err := util.FindProcess(appCommand.Path)
+func (a *appsd) updateApp(appName string) error {
+	//query native app supervisor config in configmap from metamanager
+	supervisorConfig, err := getNativeAppConfig(appName, constants.DefaultSupervisorConfKey)
 	if err != nil {
+		klog.Errorf("get app config failed: %v", err)
+		return err 
+	}
+	appConfigPath := fmt.Sprintf("%s/%s.conf", appsdconfig.Config.SupervisordConfDir, appName)
+	// check local config file
+	isExist, err := util.CheckFileExists(appConfigPath)
+	if err != nil {
+		klog.Error(err)
 		return err
 	}
-	if targetProcess != nil {
-		err = util.StopProcess(appCommand)
+	if supervisorConfig == "" && !isExist {
+		err = fmt.Errorf("cannot find config for %s", appName)
+		klog.Error(err)
+		return err 
+	}
+	if isExist {
+		content, err := os.ReadFile(appConfigPath)
 		if err != nil {
-			klog.Errorf("stop process %s failed:%v", appCommand.Path, err)
-			return err
-		} 
-	}
-	err = util.StartProcess(appCommand)
-	if err != nil {
-		return err
+			klog.Errorf("read config file %s failed: %v", appConfigPath, err)
+			return err 
+		}
+		//check if there are any changes in the service supervisor config of the configmap
+		ok := util.ValidateFileContent(string(content), supervisorConfig)
+		//local config file exist, but the config in configmap does not exist or not updated
+		if ok || supervisorConfig == "" {
+			processInfo, err := supervisordClient.GetProcessInfo(appName)
+			if err != nil {
+				klog.Errorf("get %s process info failed: %v", appName, err)
+				return err
+			}
+			if processInfo.StateName == constants.SupervisorServiceRunning {
+				err = supervisordClient.StopProcess(appName, true)
+				if err != nil {
+					klog.Errorf("stop process %v failed: %v", appName, err)
+					return err 
+				}
+			}
+			err = supervisordClient.StartProcess(appName, false)
+			if err != nil {
+				klog.Errorf("start process %v failed: %v", appName, err)
+				return err 
+			}
+		} else {
+			appConfigBakPath := fmt.Sprintf("%s.%d", appConfigPath, time.Now().Unix())
+			//backup old config file
+			err = util.RenameFile(appConfigPath, appConfigBakPath)
+			if err != nil {
+				klog.Errorf("rename config file %s to %s failed: %v", appConfigPath, appConfigBakPath)
+				return err 
+			}
+			//generate new config file by config in configmap
+			err = util.CreateFile(appConfigPath, supervisorConfig)
+			if err != nil {
+				klog.Errorf("create config file %s failed: %v", appConfigPath)
+				return err 
+			}
+			//reload config file, start app
+			err = supervisordClient.Update()
+			if err != nil {
+				klog.Errorf("supervisord reload config file %s failed: %v", appConfigPath)
+				return err
+			}
+		}
+	} else {
+		err = util.CreateFile(appConfigPath, supervisorConfig)
+		if err != nil {
+			klog.Errorf("create config file %s failed: %v", appConfigPath)
+			return err 
+		}
+		err = supervisordClient.StartProcess(appName, false)
+		if err != nil {
+			klog.Errorf("start process %v failed: %v", appName, err)
+			return err 
+		}
 	}
 	return nil
 }
@@ -309,6 +378,47 @@ func processMsg(operationKey, newUuid string, operationFunc func()) {
 	}
 	operationMap.Store(operationKey, newUuid)
 	operationFunc()
+}
+
+func getNativeAppConfig(appName, configKey string) (string, error) {
+	responseMessage, err := queryConfigFromMetaManager(model.ResourceTypeConfigmap, appName, "")
+	if err != nil {
+		klog.Errorf("query config from meta manager failed: %v", err)
+		return "", err
+	}
+	resp, err := (*responseMessage).GetContentData()
+	if err != nil {
+		klog.Errorf("get response message content data failed: %v", err)
+		return "", err	
+	}
+	var data []string
+	err = json.Unmarshal(resp, &data)
+	if err != nil {
+		klog.Errorf("unmarshal data failed: %v", err)
+		return "", err
+	}
+	appConfigs, err := formatConfigmapResp(data)
+	if err != nil {
+		klog.Errorf("format configmap resp failed: %v", err)
+		return "", err
+	}
+	configItem, ok := appConfigs[configKey]
+	if !ok {
+		return "", fmt.Errorf("cannot find config: %v", configKey)
+	}
+	return configItem, nil
+}
+
+func queryConfigFromMetaManager(resourceType, appName, domain string) (*model.Message, error) {
+	resource, err := message.BuildResource(edgedconfig.Config.HostnameOverride,
+		appsdconfig.Config.RegisterNodeNamespace, resourceType, appName, domain)
+	msg := model.NewMessage("").BuildRouter(modules.AppsdModuleName,
+			modules.AppsdGroup, resource, model.QueryOperation)
+	responseMessage, err := beehiveContext.SendSync(modules.MetaManagerModuleName, *msg, time.Second*10)
+	if err != nil {
+		return nil, err
+	}
+	return &responseMessage, nil
 }
 
 func formatConfigmapResp(data []string) (map[string]string, error) {
