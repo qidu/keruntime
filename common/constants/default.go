@@ -78,6 +78,14 @@ const (
 	DefaultVolumeStatsAggPeriod        = time.Minute
 	DefaultTunnelPort                  = 10004
 	DefaultClusterDomain               = "cluster.local"
+	
+	// appsd
+	DefaultSupervisordEndpoint         = "/tmp/supervisor.sock"
+	DefaultSupervisordConfDir          = "/etc/supervisord"
+	// indicate supervisor conf key in native app confi
+	DefaultSupervisorConfKey           = "supervisor.conf"
+
+	SupervisorServiceRunning           = "RUNNING"
 
 	CurrentSupportK8sVersion = "v1.24.14"
 

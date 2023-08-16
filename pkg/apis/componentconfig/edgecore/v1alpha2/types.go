@@ -990,6 +990,11 @@ type Appsd struct {
 	// RegisterNodeNamespace indicates register node namespace
 	// default "default"
 	RegisterNodeNamespace string `json:"registerNodeNamespace,omitempty"`
+	// SupervisordEndpoint is the endpoint of remote supervisord service
+	// default "/tmp/supervisor.sock"
+	SupervisordEndpoint string `json:"supervisordEndpoint,omitempty"`
+	// supervisord service config file directory
+	SupervisordConfDir string `json:"supervisordConfDir,omitempty"`
 }
 
 // DeviceTwin indicates the DeviceTwin module config
