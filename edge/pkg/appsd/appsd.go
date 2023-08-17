@@ -41,6 +41,7 @@ import (
 	appsdconfig "github.com/kubeedge/kubeedge/edge/pkg/appsd/config"
 	edgedconfig "github.com/kubeedge/kubeedge/edge/pkg/edged/config"
 	"github.com/kubeedge/kubeedge/edge/pkg/appsd/util"
+	appsdmodel "github.com/kubeedge/kubeedge/edge/pkg/appsd/model"
 	"github.com/kubeedge/kubeedge/edge/pkg/common/message"
 	"github.com/kubeedge/kubeedge/edge/pkg/common/modules"
 	"github.com/kubeedge/kubeedge/pkg/apis/componentconfig/edgecore/v1alpha2"
@@ -148,7 +149,7 @@ func server(stopChan <-chan struct{}) {
 func queryConfigHandler(w http.ResponseWriter, req *http.Request) {
 	if req.Method != http.MethodGet {
 		msg := "only support get request method"
-		util.ResponseError(http.StatusBadRequest, msg, w)
+		util.ResponseError(w, msg, appsdmodel.ErrRequestMethod)
 		return
 	}
 	query := req.URL.Query()
@@ -157,29 +158,29 @@ func queryConfigHandler(w http.ResponseWriter, req *http.Request) {
 	domain := query.Get("domain")
 	if configType == "" {
 		msg := "request param must have type field, the value is configmap or secert"
-		util.ResponseError(http.StatusBadRequest, msg, w)
+		util.ResponseError(w, msg, appsdmodel.ErrInvalidParam)
 		return
 	}
 	if domain == "" && appName == "" {
 		msg := "request param must have appname, when query domain cert also includes domain"
-		util.ResponseError(http.StatusBadRequest, msg, w)
+		util.ResponseError(w, msg, appsdmodel.ErrInvalidParam)
 		return
 	}
 	responseMessage, err := queryConfigFromMetaManager(configType, appName, domain)
 	if err != nil {
-		util.ResponseError(http.StatusBadRequest, err.Error(), w)
+		util.ResponseError(w, err.Error(), appsdmodel.ErrInternalServer)
 		return
 	}
 	resp, err := responseMessage.GetContentData()
 	if err != nil {
-		util.ResponseError(http.StatusInternalServerError, err.Error(), w)
+		util.ResponseError(w, err.Error(), appsdmodel.ErrInternalServer)
 		return
 	}
 
 	var data []string
 	err = json.Unmarshal(resp, &data)
 	if err != nil {
-		util.ResponseError(http.StatusInternalServerError, err.Error(), w)
+		util.ResponseError(w, err.Error(), appsdmodel.ErrJsonUnmarshal)
 		return
 	}
 
@@ -193,11 +194,11 @@ func queryConfigHandler(w http.ResponseWriter, req *http.Request) {
 		klog.Errorf("configType is not configmap or secret: configType is %s", configType)
 	}
 	if err != nil {
-		util.ResponseError(http.StatusInternalServerError, err.Error(), w)
+		util.ResponseError(w, err.Error(), appsdmodel.ErrFormatResponse)
 		return
 	}
 
-	util.ResponseSuccess(respData, w)
+	util.ResponseSuccess(w, respData)
 }
 
 func (a *appsd) handleApp(msg *model.Message) {
@@ -397,6 +398,11 @@ func getNativeAppConfig(appName, configKey string) (string, error) {
 		klog.Errorf("unmarshal data failed: %v", err)
 		return "", err
 	}
+	// It is also allowed that the app config is not created by using configmap, just use local config
+	if data == nil || len(data) == 0 {
+		klog.Warning("the native app config is not created by using configmap, will use local config")
+		return "", nil
+	}
 	appConfigs, err := formatConfigmapResp(data)
 	if err != nil {
 		klog.Errorf("format configmap resp failed: %v", err)
@@ -404,7 +410,8 @@ func getNativeAppConfig(appName, configKey string) (string, error) {
 	}
 	configItem, ok := appConfigs[configKey]
 	if !ok {
-		return "", fmt.Errorf("cannot find config: %v", configKey)
+		klog.Warning("the native app supervisor config is not created by using configmap, will use local config")
+		return "", nil
 	}
 	return configItem, nil
 }

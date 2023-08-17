@@ -90,6 +90,7 @@ const (
 	CurrentSupportK8sVersion = "v1.24.14"
 
 	AppType  	= "appType"
+	AppName     = "appName"
 	Pod         = "pod"
 	Native      = "native"
 
