@@ -3,33 +3,33 @@ package util
 import (
 	"encoding/json"
 	"net/http"
-)
 
-const (
-	SUCCESS = "success"
+	appsdmodel "github.com/kubeedge/kubeedge/edge/pkg/appsd/model"
 )
 
 type serverResponse struct {
-	Code int         `json:"code"`
-	Msg  string      `json:"msg"`
-	Body interface{} `json:"body"`
+	Code     string      `json:"code"`
+	Message  string      `json:"message"`
+	Body interface{}     `json:"body"`
 }
 
-func ResponseError(code int, msg string, w http.ResponseWriter) {
+func ResponseError(w http.ResponseWriter, msg string, err *appsdmodel.Error) {
 	resp := serverResponse{
-		Code: code,
-		Msg:  msg,
-		Body: nil,
+		Code: 	  err.Code,
+		Message:  msg,
+		Body:     nil,
 	}
+	w.WriteHeader(err.Status)
 	w.Write(marshalResult(&resp))
 }
 
-func ResponseSuccess(data interface{}, w http.ResponseWriter) {
+func ResponseSuccess(w http.ResponseWriter, data interface{}) {
 	resp := serverResponse{
-		Code: http.StatusOK,
-		Msg:  SUCCESS,
-		Body: data,
+		Code:    appsdmodel.Success.Code,
+		Message: appsdmodel.Success.Message,
+		Body:    data,
 	}
+	w.WriteHeader(http.StatusOK)
 	w.Write(marshalResult(&resp))
 }
 

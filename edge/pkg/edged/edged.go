@@ -293,14 +293,16 @@ func (e *edged) handlePod(op string, content []byte, updatesChan chan<- interfac
 	var info *model.Message
 	if filterPodByNodeName(&pod, e.nodeName) {
 		labels := pods[0].ObjectMeta.Labels
-		appType := ""
+		appType, appName := "", ""
 		if labels != nil {
 			if val, ok := labels[constants.AppType]; ok {
 				appType = val
 			}
+			if val, ok := labels[constants.AppName]; ok {
+				appName = val
+			}
 		}
-		if appType == constants.Native && pods[0].Spec.Containers[0].Args != nil &&
-			len(pods[0].Spec.Containers[0].Args) > 0 {
+		if appType == constants.Native && appName != "" {
 			switch op {
 			case model.InsertOperation:
 				klog.V(4).InfoS("Receive message of adding new pods", "pods", klog.KObjs(pods))
