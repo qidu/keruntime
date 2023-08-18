@@ -37,8 +37,13 @@ func NewDefaultCloudCoreConfig() *CloudCoreConfig {
 		CommonConfig: &CommonConfig{
 			TunnelPort: constants.ServerPort,
 			MonitorServer: MonitorServer{
-				BindAddress:     "127.0.0.1:9091",
+				BindAddress:     "127.0.0.1:9001",
 				EnableProfiling: false,
+				Prometheus: Prometheus{
+					Server: "127.0.0.1:9091",
+					IntervalS: 10,
+					Job: constants.DefaultJobName,
+				},
 			},
 		},
 		KubeAPIConfig: &KubeAPIConfig{

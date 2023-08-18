@@ -79,6 +79,8 @@ const (
 	DefaultTunnelPort                  = 10004
 	DefaultClusterDomain               = "cluster.local"
 	
+	// monitor server
+	DefaultJobName					   = "connected_node_count" 
 	// appsd
 	DefaultSupervisordEndpoint         = "/tmp/supervisor.sock"
 	DefaultSupervisordConfDir          = "/etc/supervisord"

@@ -50,12 +50,27 @@ type CommonConfig struct {
 // MonitorServer indicates MonitorServer config
 type MonitorServer struct {
 	// BindAddress is the IP address and port for the monitor server to serve on,
-	// defaulting to 127.0.0.1:9091 (set to 0.0.0.0 for all interfaces)
+	// defaulting to 127.0.0.1:9001 (set to 0.0.0.0 for all interfaces)
 	BindAddress string `json:"bindAddress,omitempty"`
 
 	// EnableProfiling enables profiling via web interface on /debug/pprof handler.
 	// Profiling handlers will be handled by monitor server.
 	EnableProfiling bool `json:"enableProfiling,omitempty"`
+
+	// prometheus is the config for the monitor metric data to push,
+	Prometheus Prometheus `json:"prometheus,omitempty"`
+}
+
+type Prometheus struct {
+	// Server is the IP address and port for the metric data to push,
+	// defaulting to 127.0.0.1:9091 (set to 0.0.0.0 for all interfaces)
+	Server	string `json:"server,omitempty"`
+	// IntervalS is the time interval for pushing data to the prometheus service,
+	// defaulting to 10
+	IntervalS int `json:"interval_s,omitempty"`
+	// Job is the name of push job,
+	// defaulting to connected_node_count
+	Job string `json:"job,omitempty"` 
 }
 
 // KubeAPIConfig indicates the configuration for interacting with k8s server
