@@ -24,7 +24,9 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/push"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	mikunode "github.com/qbox/mikud-live/common/node"
 	"k8s.io/klog/v2"
 
 	beehivecontext "github.com/kubeedge/beehive/pkg/core/context"
@@ -68,6 +70,22 @@ func InstallHandlerForPProf(mux *http.ServeMux) {
 	mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
 }
 
+func loopPrometheusPush(config config.MonitorServer) {
+	conf := config.Prometheus
+	if conf.IntervalS <= 0 {
+		conf.IntervalS = 10
+	}
+	for range time.Tick(time.Duration(conf.IntervalS) * time.Second) {
+		err := push.New(conf.Server, conf.Job).
+			Collector(ConnectedNodes).
+            Grouping("instance", mikunode.GetNodeId()).
+			Add();
+		if err != nil {
+            klog.Errorf("prometheus push failed:%v", err)
+        }
+	}
+}
+
 // ServeMonitor serve monitoring metric.
 func ServeMonitor(config config.MonitorServer) {
 	registerMetrics()
@@ -94,6 +112,8 @@ func ServeMonitor(config config.MonitorServer) {
 			klog.Errorf("Server shutdown failed: %v", err)
 		}
 	}()
+
+	go loopPrometheusPush(config)
 
 	klog.Infof("starting monitor server on addr: %s", config.BindAddress)
 	klog.Exit(s.ListenAndServe())
