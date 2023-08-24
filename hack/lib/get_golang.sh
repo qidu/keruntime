@@ -30,6 +30,8 @@ kubeedge::golang::verify_golang_version() {
            wget https://golang.google.cn/dl/go1.19.5.linux-amd64.tar.gz
        fi
        tar -C /usr/local -xzf go1.19.5.linux-amd64.tar.gz
+       cp /usr/local/go/bin/go /usr/local/bin/go
+       
        echo 'export PATH=$PATH:/usr/local/go/bin' >> /root/.profile
        echo 'export GOPATH=/root/go' >> /root/.profile
        echo 'export GOBIN=$GOPATH/bin' >> /root/.profile
