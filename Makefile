@@ -23,7 +23,7 @@ COMPONENTS=cloud \
 .EXPORT_ALL_VARIABLES:
 OUT_DIR ?= _output/local
 
-BUILD_WITH_CONTAINER?=true
+BUILD_WITH_CONTAINER?=false
 RUN = hack/make-rules/build_with_container.sh
 
 define ALL_HELP_INFO
