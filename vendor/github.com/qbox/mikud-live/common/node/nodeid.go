@@ -5,34 +5,33 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"math/rand"
 	"os"
 	"path"
+	"regexp"
 	"runtime"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/rs/zerolog"
 	uuid "github.com/satori/go.uuid"
 )
 
 const (
-	pathSystemdHostname = "/etc/hostname"
-
-	//pathSystemdMachineID = "/etc/machine-id"
-	//pathDbusMachineID    = "/var/lib/dbus/machine-id"
+	PathDmiUUID          = "/sys/class/dmi/id/product_uuid"
+	pathDbusMachineID    = "/var/lib/dbus/machine-id"
+	pathSystemdMachineID = "/etc/machine-id"
+	pathSystemdHostname  = "/etc/hostname"
 
 	// 默认系统启动时间检查时间
 	defaultRebootMin = 2
-	defaultIDPath    = "/home/qboxserver/.miku-nodeid"
 )
 
 var (
 	xl   zerolog.Logger
 	once sync.Once
 
-	machineID = "www.unreachable.com"
+	machineID     = "www.unreachable.com"
+	DefaultIDPath = "/home/qboxserver/.miku-nodeid"
 
 	idConf NodeIDConf
 )
@@ -45,7 +44,7 @@ type NodeIDConf struct {
 func init() {
 	xl = zerolog.New(os.Stdout)
 
-	idConf.IDPath = defaultIDPath
+	idConf.IDPath = DefaultIDPath
 	idConf.RebootMin = defaultRebootMin
 
 	if runtime.GOOS == "darwin" {
@@ -70,6 +69,7 @@ func ReSetDefaultLogger(writers []io.Writer) {
 // GetNodeId 用于服务启动时获取当前节点id
 // 服务进程启动后 node id 是保持不变的
 func GetNodeId() string {
+	idConf.IDPath = DefaultIDPath
 	uptime, _, err := GetUptime(&xl)
 	if err != nil {
 		xl.Panic().Msg(err.Error())
@@ -113,33 +113,59 @@ func GetNodeId() string {
 
 // getSetMachineID read the `hostname` info
 func getSetMachineID() {
-	systemdMachineID := slurpFile(pathSystemdHostname)
+	var uuidSeed string
 
-	if systemdMachineID != "" {
-		machineID = systemdMachineID
+	// 先读取 dmi 类型信息（受系统保护，可能会读取失败）
+	uuidSeed, err := slurpFile(PathDmiUUID)
+	if err == nil && len(uuidSeed) != 0 {
+		machineID = uuidSeed
 		return
 	}
+	xl.Error().Msgf("read /sys/class/dmi/id/product_uuid failed, err: %+v", err)
 
-	random := make([]byte, 12)
-	if _, err := rand.Read(random); err != nil {
-		xl.Panic().Msgf("failed to gen rand seed, err: %s", err.Error())
-		return
+	var hostname string
+	if os.IsPermission(err) || os.IsNotExist(err) || len(uuidSeed) == 0 {
+		uuidSeed, err = getMachineID()
+		if err != nil {
+			panic(err)
+		}
+		hostname, err = getHostname()
+		if err != nil {
+			panic(err)
+		}
 	}
-	newMachineID := fmt.Sprintf("%x%x", random, time.Now().Unix())
+	uuidSeed = uuidSeed + hostname
+	machineID = uuidSeed
+}
 
-	spewFile(pathSystemdHostname, newMachineID, 0444)
-	machineID = newMachineID
+func getMachineID() (string, error) {
+	// 尝试读取受保护的 machine id
+	var dbusMachineID string
+	dbusMachineID, err := slurpFile(pathDbusMachineID)
+	if err != nil {
+		xl.Error().Msgf("read /var/lib/dbus/machine-id failed, err: %+v", err)
+	}
+
+	if os.IsPermission(err) || os.IsNotExist(err) || len(dbusMachineID) == 0 {
+		dbusMachineID, err = slurpFile(pathSystemdMachineID)
+		if err != nil {
+			xl.Error().Msgf("read /etc/machine-id failed, err: %+v", err)
+			return "", err
+		}
+	}
+
+	return dbusMachineID, err
 }
 
 // slurpFile read one-liner text files, strip newline.
-func slurpFile(_path string) string {
+func slurpFile(_path string) (string, error) {
 	data, err := ioutil.ReadFile(_path)
 	if err != nil {
 		xl.Error().Msgf("read file %s failed, err: %s", _path, err.Error())
-		return ""
+		return "", err
 	}
 
-	return strings.TrimSpace(string(data))
+	return strings.TrimSpace(string(data)), nil
 }
 
 // spewFile write one-liner text files, add newline, ignore errors (best effort).
@@ -196,11 +222,40 @@ func GenUUID() string {
 
 func genNodeID() string {
 	var id = GenUUID()
-	hostname, err := os.Hostname()
+	hostname, err := getHostname()
 	if err != nil {
 		xl.Error().Msgf("get host name failed, err: %s", err.Error())
 	} else {
 		id = fmt.Sprintf("%s-%s", id, hostname)
 	}
 	return id
+}
+
+func getHostname() (string, error) {
+	hostname, err := os.Hostname()
+	if err != nil {
+		return "", err
+	}
+	hostname = strings.ToLower(hostname)
+	hostname = replaceString(hostname)
+
+	hostname = trimSuffix(hostname)
+	return hostname, nil
+}
+
+var (
+	regex = regexp.MustCompile(`[^a-zA-Z0-9]`)
+)
+
+func replaceString(input string) string {
+	output := regex.ReplaceAllString(input, "-")
+	return output
+}
+
+func trimSuffix(str string) string {
+	str = strings.TrimSuffix(str, "-")
+	if strings.HasSuffix(str, "-") {
+		str = trimSuffix(str)
+	}
+	return str
 }
