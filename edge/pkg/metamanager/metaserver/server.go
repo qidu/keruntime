@@ -123,7 +123,7 @@ func createTLSConfig() tls.Config {
 	}
 	return tls.Config{
 		ClientCAs:    pool,
-		ClientAuth:   tls.VerifyClientCertIfGiven,
+		ClientAuth:   tls.NoClientCert,
 		Certificates: []tls.Certificate{certificate},
 		MinVersion:   tls.VersionTLS12,
 	}
