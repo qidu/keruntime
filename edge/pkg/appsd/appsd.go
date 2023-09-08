@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"reflect"
 	"strings"
 	"sync"
 	"time"
@@ -39,11 +40,11 @@ import (
 	model "github.com/kubeedge/beehive/pkg/core/model"
 	"github.com/kubeedge/kubeedge/common/constants"
 	appsdconfig "github.com/kubeedge/kubeedge/edge/pkg/appsd/config"
-	edgedconfig "github.com/kubeedge/kubeedge/edge/pkg/edged/config"
-	"github.com/kubeedge/kubeedge/edge/pkg/appsd/util"
 	appsdmodel "github.com/kubeedge/kubeedge/edge/pkg/appsd/model"
+	"github.com/kubeedge/kubeedge/edge/pkg/appsd/util"
 	"github.com/kubeedge/kubeedge/edge/pkg/common/message"
 	"github.com/kubeedge/kubeedge/edge/pkg/common/modules"
+	edgedconfig "github.com/kubeedge/kubeedge/edge/pkg/edged/config"
 	"github.com/kubeedge/kubeedge/pkg/apis/componentconfig/edgecore/v1alpha2"
 )
 
@@ -184,21 +185,34 @@ func queryConfigHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	var respData interface{}
+	var respData map[string]string
 	switch configType {
 	case model.ResourceTypeConfigmap:
 		respData, err = formatConfigmapResp(data)
+		if err != nil {
+			util.ResponseError(w, err.Error(), appsdmodel.ErrFormatResponse)
+			return
+		}
+		util.ResponseSuccess(w, respData)
 	case model.ResourceTypeSecret:
 		respData, err = formatSecretResp(data)
+		if err != nil {
+			util.ResponseError(w, err.Error(), appsdmodel.ErrFormatResponse)
+			return
+		}
+		domainCertResp := &appsdmodel.DomainCertResponse{}
+		err = ConvertMapToResponseStruct(respData, domainCertResp)
+		if err != nil {
+			util.ResponseError(w, err.Error(), appsdmodel.ErrFormatResponse)
+			return
+		}
+		domainCertResp.Code = appsdmodel.Success.Code
+		domainCertResp.Message = appsdmodel.Success.Message
+		util.Response(w, domainCertResp)
 	default:
 		klog.Errorf("configType is not configmap or secret: configType is %s", configType)
 	}
-	if err != nil {
-		util.ResponseError(w, err.Error(), appsdmodel.ErrFormatResponse)
-		return
-	}
-
-	util.ResponseSuccess(w, respData)
+	return 
 }
 
 func (a *appsd) handleApp(msg *model.Message) {
@@ -448,38 +462,50 @@ func formatConfigmapResp(data []string) (map[string]string, error) {
 	return res, nil
 }
 
-func formatSecretResp(data []string) ([]map[string]string, error) {
+func formatSecretResp(data []string) (map[string]string, error) {
 	if data == nil || len(data) == 0 {
 		return nil, errors.New("data is empty")
 	}
-	var res []map[string]string
-	for _, v := range data {
-		s := new(v1.Secret)
-		err := json.Unmarshal([]byte(v), s)
-		if err != nil {
-			return nil, err
-		}
-		singleSecretData := map[string]string{}
-		if s.Data != nil && len(s.Data) > 0 {
-			for k, v := range s.Data {
-				bytes, err := base64.StdEncoding.DecodeString(string(v))
-				if err == nil {
-					singleSecretData[k] = string(bytes)
-				} else {
-					singleSecretData[k] = string(v)
-				}
-			}
-		} else {
-			for k, v := range s.StringData {
-				bytes, err := base64.StdEncoding.DecodeString(v)
-				if err == nil {
-					singleSecretData[k] = string(bytes)
-				} else {
-					singleSecretData[k] = v
-				}
-			}
-		}
-		res = append(res, singleSecretData)
+	s := new(v1.Secret)
+	err := json.Unmarshal([]byte(data[0]), s)
+	if err != nil {
+		return nil, err
 	}
-	return res, nil
+	singleSecretData := map[string]string{}
+	if s.Data != nil && len(s.Data) > 0 {
+		for k, v := range s.Data {
+			bytes, err := base64.StdEncoding.DecodeString(string(v))
+			if err == nil {
+				singleSecretData[k] = string(bytes)
+			} else {
+				singleSecretData[k] = string(v)
+			}
+			singleSecretData[k] = strings.TrimRight(singleSecretData[k], "\n")
+		}
+	} else {
+		for k, v := range s.StringData {
+			bytes, err := base64.StdEncoding.DecodeString(v)
+			if err == nil {
+				singleSecretData[k] = string(bytes)
+			} else {
+				singleSecretData[k] = v
+			}
+			singleSecretData[k] = strings.TrimRight(singleSecretData[k], "\n")
+		}
+	}
+	return singleSecretData, nil
+}
+
+func ConvertMapToResponseStruct(data map[string]string, resp interface{}) error {
+	if data == nil || len(data) == 0 {
+		return errors.New("data is empty")
+	}
+	dvalue := reflect.ValueOf(resp).Elem()
+	for i := 2; i < dvalue.NumField(); i++ {
+		fieldInfo := dvalue.Type().Field(i) 
+        tag := fieldInfo.Tag           
+        name := tag.Get("json")
+		dvalue.FieldByName(fieldInfo.Name).Set(reflect.ValueOf(data[name]))
+	}
+	return nil
 }

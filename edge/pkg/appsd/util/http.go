@@ -17,7 +17,6 @@ func ResponseError(w http.ResponseWriter, msg string, err *appsdmodel.Error) {
 	resp := serverResponse{
 		Code: 	  err.Code,
 		Message:  msg,
-		Body:     nil,
 	}
 	w.WriteHeader(err.Status)
 	w.Write(marshalResult(&resp))
@@ -33,7 +32,12 @@ func ResponseSuccess(w http.ResponseWriter, data interface{}) {
 	w.Write(marshalResult(&resp))
 }
 
-func marshalResult(sResp *serverResponse) (resp []byte) {
+func Response(w http.ResponseWriter, data interface{}) {
+	w.WriteHeader(http.StatusOK)
+	w.Write(marshalResult(data))
+}
+
+func marshalResult(sResp interface{}) (resp []byte) {
 	resp, _ = json.Marshal(sResp)
 	return
 }
