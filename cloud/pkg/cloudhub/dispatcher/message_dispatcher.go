@@ -241,7 +241,7 @@ func (md *messageDispatcher) enqueueAckMessage(nodeID string, msg *beehivemodel.
 	// If the message operation is delete, force to sync the resource message
 	// If the message operation is response, force to sync the resource message,
 	// since the edgeCore requests it.
-	if isDeleteMessage(msg) || msg.GetOperation() == beehivemodel.ResponseOperation {
+	if isDeleteMessage(msg) || msg.GetOperation() == beehivemodel.ResponseOperation || msg.GetOperation() == beehivemodel.InsertOperation {
 		shouldEnqueue = true
 		return
 	}
