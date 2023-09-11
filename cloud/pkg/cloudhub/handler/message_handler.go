@@ -122,8 +122,10 @@ func (mh *messageHandler) HandleConnection(connection conn.Connection) {
 		klog.Infof("edge node %s for project %s connected", nodeInfo.NodeID, nodeInfo.ProjectID)
 
 		// init node message pool and add to the dispatcher
-		nodeMessagePool := common.InitNodeMessagePool(nodeID)
-		mh.MessageDispatcher.AddNodeMessagePool(nodeID, nodeMessagePool)
+		// nodeMessagePool := common.InitNodeMessagePool(nodeID)
+		// mh.MessageDispatcher.AddNodeMessagePool(nodeID, nodeMessagePool)
+		// check for an exist one
+		nodeMessagePool := mh.MessageDispatcher.GetNodeMessagePool(nodeID)
 
 		keepaliveInterval := time.Duration(mh.KeepaliveInterval) * time.Second
 		// create a node session for each edge node
