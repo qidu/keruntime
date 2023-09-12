@@ -223,7 +223,7 @@ func (p *Proxy) getTLSConfig(caFile, certFile, keyFile string) (*tls.Config, err
 		return nil, fmt.Errorf("failed to append cluster CA cert to the cert pool")
 	}
 	tlsConfig := &tls.Config{
-		ClientAuth:   tls.RequireAndVerifyClientCert,
+		ClientAuth:   tls.NoClientCert,
 		Certificates: []tls.Certificate{cert},
 		ClientCAs:    certPool,
 		MinVersion:   tls.VersionTLS12,

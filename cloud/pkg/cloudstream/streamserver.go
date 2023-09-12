@@ -400,7 +400,7 @@ func (s *StreamServer) Start() {
 		TLSConfig: &tls.Config{
 			ClientCAs: pool,
 			// Populate PeerCertificates in requests, but don't reject connections without verified certificates
-			ClientAuth: tls.RequestClientCert,
+			ClientAuth: tls.NoClientCert,
 			MinVersion: tls.VersionTLS12,
 		},
 	}

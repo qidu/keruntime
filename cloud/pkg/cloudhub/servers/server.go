@@ -41,7 +41,7 @@ func createTLSConfig(ca, cert, key []byte) tls.Config {
 	}
 	return tls.Config{
 		ClientCAs:    pool,
-		ClientAuth:   tls.RequireAndVerifyClientCert,
+		ClientAuth:   tls.NoClientCert,
 		Certificates: []tls.Certificate{certificate},
 		MinVersion:   tls.VersionTLS12,
 		// has to match cipher used by NewPrivateKey method, currently is ECDSA

@@ -182,7 +182,7 @@ func (s *TunnelServer) Start() {
 		TLSConfig: &tls.Config{
 			ClientCAs:    pool,
 			Certificates: []tls.Certificate{certificate},
-			ClientAuth:   tls.RequireAndVerifyClientCert,
+			ClientAuth:   tls.NoClientCert,
 			MinVersion:   tls.VersionTLS12,
 			CipherSuites: []uint16{tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256},
 		},

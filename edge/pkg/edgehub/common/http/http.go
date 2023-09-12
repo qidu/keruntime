@@ -72,7 +72,7 @@ func NewHTTPClientWithCA(capem []byte, certificate tls.Certificate) (*http.Clien
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{
 			RootCAs:            pool,
-			InsecureSkipVerify: false,
+			InsecureSkipVerify: true,
 			Certificates:       []tls.Certificate{certificate},
 		},
 	}

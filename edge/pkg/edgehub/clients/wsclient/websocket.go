@@ -68,7 +68,7 @@ func (wsc *WebSocketClient) Init() error {
 	tlsConfig := &tls.Config{
 		RootCAs:            pool,
 		Certificates:       []tls.Certificate{cert},
-		InsecureSkipVerify: false,
+		InsecureSkipVerify: true,
 	}
 
 	option := wsclient.Options{
