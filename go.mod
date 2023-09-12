@@ -58,7 +58,7 @@ require (
 require (
 	github.com/abrander/go-supervisord v0.0.0-20210517172913-a5469a4c50e2
 	github.com/pkg/errors v0.9.1
-	github.com/qbox/mikud-live v1.1.1-0.20230830082435-3af38b11ec5b
+	github.com/qbox/mikud-live v1.1.1-0.20230911084142-db97e67bf64b
 	gopkg.in/square/go-jose.v2 v2.5.1
 	gopkg.in/yaml.v3 v3.0.1
 )

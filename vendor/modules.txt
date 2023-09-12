@@ -812,7 +812,7 @@ github.com/prometheus/common/model
 github.com/prometheus/procfs
 github.com/prometheus/procfs/internal/fs
 github.com/prometheus/procfs/internal/util
-# github.com/qbox/mikud-live v1.1.1-0.20230830082435-3af38b11ec5b
+# github.com/qbox/mikud-live v1.1.1-0.20230911084142-db97e67bf64b
 ## explicit; go 1.18
 github.com/qbox/mikud-live/common/node
 # github.com/rs/zerolog v1.29.1

@@ -998,6 +998,8 @@ github.com/prometheus/procfs v0.7.3 h1:4jVXhlkAyzOScmCkXBTOLRLTz8EeU+eyjrwB/EPq0
 github.com/prometheus/procfs v0.7.3/go.mod h1:cz+aTbrPOrUb4q7XlbU9ygM+/jj0fzG6c1xBZuNvfVA=
 github.com/qbox/mikud-live v1.1.1-0.20230830082435-3af38b11ec5b h1:6iKTU0HiXvILQBUg1dLZuTPsDvNcnDpjrrbD1QzciuM=
 github.com/qbox/mikud-live v1.1.1-0.20230830082435-3af38b11ec5b/go.mod h1:1qQV8NnABdEmxyHqJ5xVU7kdVzMYZRmO8fezi9vQMkQ=
+github.com/qbox/mikud-live v1.1.1-0.20230911084142-db97e67bf64b h1:1h68tLjscRPzIg4KPqEPIOuVfJ6t/NOWCot9MZ9iSYg=
+github.com/qbox/mikud-live v1.1.1-0.20230911084142-db97e67bf64b/go.mod h1:9uN++9J0yBioRQp32hlyq6lt9BteOXsJSRqIvahm55c=
 github.com/qiniu/qmgo v1.1.7/go.mod h1:QvZkzWNEv0buWPx0kdZsSs6URhESVubacxFPlITmvB8=
 github.com/qiniu/version v0.4.0/go.mod h1:CAMWwNDQeJrmIOSo146WdAvbEkjviWQ/T4j+jyKKdqk=
 github.com/qiniu/x v1.11.9/go.mod h1:03Ni9tj+N2h2aKnAz+6N0Xfl8FwMEDRC2PAlxekASDs=
