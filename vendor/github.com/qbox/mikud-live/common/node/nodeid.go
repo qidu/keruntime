@@ -74,7 +74,6 @@ func GetNodeId() string {
 	if err != nil {
 		xl.Panic().Msg(err.Error())
 	}
-
 	// 检测系统是否启动足够时间
 	if int(uptime) < idConf.RebootMin*60 {
 		xl.Panic().Msgf("reboot time is not enough, uptime: %d", uptime)
@@ -95,7 +94,6 @@ func GetNodeId() string {
 	scanner := bufio.NewReader(idf)
 	lines, _, err := scanner.ReadLine()
 
-	xl.Debug().Msgf("id file content: %s", string(lines))
 	if err != nil {
 		xl.Warn().Msgf("read id info failed, err: %v", err)
 		if err != io.EOF {
@@ -113,29 +111,31 @@ func GetNodeId() string {
 
 // getSetMachineID read the `hostname` info
 func getSetMachineID() {
-	var uuidSeed string
 
 	// 先读取 dmi 类型信息（受系统保护，可能会读取失败）
-	uuidSeed, err := slurpFile(PathDmiUUID)
-	if err == nil && len(uuidSeed) != 0 {
-		machineID = uuidSeed
-		return
+	dmiUUID, err := slurpFile(PathDmiUUID)
+	if err == nil {
+		machineID += dmiUUID
+	} else {
+		xl.Error().Msgf("read /sys/class/dmi/id/product_uuid failed, err: %+v", err)
 	}
-	xl.Error().Msgf("read /sys/class/dmi/id/product_uuid failed, err: %+v", err)
 
-	var hostname string
-	if os.IsPermission(err) || os.IsNotExist(err) || len(uuidSeed) == 0 {
-		uuidSeed, err = getMachineID()
-		if err != nil {
-			panic(err)
-		}
-		hostname, err = getHostname()
-		if err != nil {
-			panic(err)
-		}
+	machineIDLocal, err := getMachineID()
+	if err == nil {
+		machineID += machineIDLocal
+	} else {
+		xl.Error().Msgf("read local machineID failed, err: %+v", err)
 	}
-	uuidSeed = uuidSeed + hostname
-	machineID = uuidSeed
+	hostname, err := getHostname()
+	if err == nil {
+		machineID += hostname
+	} else {
+		xl.Error().Msgf("read local hostname failed, err: %+v", err)
+	}
+
+	if len(machineID) == 0 {
+		panic("machineID get set failed.")
+	}
 }
 
 func getMachineID() (string, error) {
@@ -146,13 +146,12 @@ func getMachineID() (string, error) {
 		xl.Error().Msgf("read /var/lib/dbus/machine-id failed, err: %+v", err)
 	}
 
-	if os.IsPermission(err) || os.IsNotExist(err) || len(dbusMachineID) == 0 {
-		dbusMachineID, err = slurpFile(pathSystemdMachineID)
-		if err != nil {
-			xl.Error().Msgf("read /etc/machine-id failed, err: %+v", err)
-			return "", err
-		}
+	systemdMachineID, err := slurpFile(pathSystemdMachineID)
+	if err != nil {
+		xl.Error().Msgf("read /etc/machine-id failed, err: %+v", err)
+		return "", err
 	}
+	dbusMachineID += systemdMachineID
 
 	return dbusMachineID, err
 }
