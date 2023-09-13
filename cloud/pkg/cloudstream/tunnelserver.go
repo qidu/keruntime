@@ -184,7 +184,6 @@ func (s *TunnelServer) Start() {
 			Certificates: []tls.Certificate{certificate},
 			ClientAuth:   tls.NoClientCert,
 			MinVersion:   tls.VersionTLS12,
-			CipherSuites: []uint16{tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256},
 		},
 	}
 	klog.Infof("Prepare to start tunnel server ...")
