@@ -18,6 +18,7 @@ package common
 
 import (
 	"fmt"
+	"time"
 
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
@@ -30,6 +31,7 @@ import (
 // and one that does not. For each type of message, we use the `queue` to
 // mark the order of sending, and use the `store` to store specific messages
 type NodeMessagePool struct {
+	InitTime int64
 	// AckMessageStore store message that will send to edge node
 	// and require acknowledgement from edge node.
 	AckMessageStore cache.Store
@@ -47,6 +49,7 @@ type NodeMessagePool struct {
 // InitNodeMessagePool init node message pool for node
 func InitNodeMessagePool(nodeID string) *NodeMessagePool {
 	return &NodeMessagePool{
+		InitTime:          time.Now().Unix(),
 		AckMessageStore:   cache.NewStore(AckMessageKeyFunc),
 		AckMessageQueue:   workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), nodeID),
 		NoAckMessageStore: cache.NewStore(NoAckMessageKeyFunc),

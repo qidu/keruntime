@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -86,6 +87,9 @@ type MessageDispatcher interface {
 
 	// Publish sends the given message to module according to the message source
 	Publish(msg *beehivemodel.Message) error
+
+	// Check invalid session and message pools
+	CheckPools()
 }
 
 type messageDispatcher struct {
@@ -241,7 +245,7 @@ func (md *messageDispatcher) enqueueAckMessage(nodeID string, msg *beehivemodel.
 	// If the message operation is delete, force to sync the resource message
 	// If the message operation is response, force to sync the resource message,
 	// since the edgeCore requests it.
-	if isDeleteMessage(msg) || msg.GetOperation() == beehivemodel.ResponseOperation {
+	if isDeleteMessage(msg) || msg.GetOperation() == beehivemodel.ResponseOperation || msg.GetOperation() == beehivemodel.InsertOperation {
 		shouldEnqueue = true
 		return
 	}
@@ -526,4 +530,32 @@ func (md *messageDispatcher) Publish(msg *beehivemodel.Message) error {
 		beehivecontext.SendToGroup(modules.EdgeControllerGroupName, *msg)
 	}
 	return nil
+}
+
+func (md *messageDispatcher) CheckPools() {
+	for {
+		now := time.Now().Unix()
+		temp := make(map[string]int)
+		md.NodeMessagePools.Range(func(key, value interface{}) bool {
+			_, exists := md.SessionManager.GetSession(key.(string))
+			if exists {
+				if value.(*common.NodeMessagePool).InitTime+3600*8 < now {
+					temp[key.(string)] = 1
+				}
+			}
+			return true
+		})
+
+		for key, _ := range temp {
+			md.NodeMessagePools.Delete(key)
+		}
+
+		time.Sleep(time.Duration(3600) * time.Second)
+
+		select {
+		case <-beehivecontext.Done():
+			return
+		default:
+		}
+	}
 }
