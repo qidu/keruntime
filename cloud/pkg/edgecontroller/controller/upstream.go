@@ -41,12 +41,14 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	apimachineryType "k8s.io/apimachinery/pkg/types"
 	k8sinformer "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	coordinationlisters "k8s.io/client-go/listers/coordination/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
+	"k8s.io/component-helpers/scheduling/corev1"
 	"k8s.io/klog/v2"
 
 	beehiveContext "github.com/kubeedge/beehive/pkg/core/context"
@@ -60,6 +62,7 @@ import (
 	routerrule "github.com/kubeedge/kubeedge/cloud/pkg/router/rule"
 	httpUtils "github.com/kubeedge/kubeedge/cloud/pkg/router/utils/http"
 	common "github.com/kubeedge/kubeedge/common/constants"
+	commonconstants "github.com/kubeedge/kubeedge/common/constants"
 	edgeapi "github.com/kubeedge/kubeedge/common/types"
 	"github.com/kubeedge/kubeedge/pkg/apis/componentconfig/cloudcore/v1alpha1"
 	rulesv1 "github.com/kubeedge/kubeedge/pkg/apis/rules/v1"
@@ -305,8 +308,105 @@ func (uc *UpstreamController) reportNodeConnectionStatus() {
 			if resp.StatusCode == http.StatusOK {
 				klog.Info("report node connection status successfully!")
 			}
+			uc.syncConfigToEdge(content, nodeId)
 		}
 	}
+}
+
+func (uc *UpstreamController) syncConfigToEdge(content []byte, nodeId string) {
+	body := make(map[string]interface{})
+	err := json.Unmarshal(content, &body)
+	if err != nil {
+		klog.Errorf("json unmarshal node connection messsage body failed: %v", err)
+		return
+	}
+	if body["eventType"] == common.NodeConnectOperation {
+		go func () {
+			configMapList := uc.queryConfigMapList("")
+			uc.dispatchConfigMapList(nodeId, configMapList)
+		}()
+		
+		go func() {
+			secretList := uc.querySecretList("")
+			uc.dispatchSecretList(nodeId, secretList)
+		}()
+	}
+}
+
+func (uc *UpstreamController) dispatchConfigMapList(nodeId string, configMapList []*v1.ConfigMap) {
+	if configMapList == nil || len(configMapList) == 0 {
+		return 
+	}
+	for _, configMap := range configMapList {
+		appName, _ := parseNativeLabels(configMap.Labels)
+		resourceID := configMap.Name
+		if appName != "" {
+			resourceID = resourceID + commonconstants.ResourceSep + appName
+		}
+		resource, err := messagelayer.BuildResource(nodeId, configMap.Namespace, model.ResourceTypeConfigmap, resourceID)
+		if err != nil {
+			klog.Warningf("build message resource failed with error: %s", err)
+			continue
+		}
+		msg := model.NewMessage("").
+			SetResourceVersion(configMap.ResourceVersion).
+			BuildRouter(modules.EdgeControllerModuleName, constants.GroupResource, resource, model.InsertOperation).
+			FillBody(configMap)
+		err = uc.messageLayer.Send(*msg)
+		if err != nil {
+			klog.Warningf("send message failed with error: %s, operation: %s, resource: %s", err, msg.GetOperation(), msg.GetResource())
+		} else {
+			klog.V(4).Infof("send message successfully, operation: %s, resource: %s", msg.GetOperation(), msg.GetResource())
+		}
+	}	
+}
+	
+func (uc *UpstreamController) dispatchSecretList(nodeId string, secretList []*v1.Secret) {
+	if secretList == nil || len(secretList) == 0 {
+		return 
+	}
+	for _, secret := range secretList {
+		appName, domain := parseNativeLabels(secret.Labels)
+		resourceID := secret.Name
+		if appName != "" {
+			resourceID = resourceID + commonconstants.ResourceSep + appName
+		}
+		if domain != "" {
+			resourceID = resourceID + commonconstants.ResourceSep + domain
+		}
+		resource, err := messagelayer.BuildResource(nodeId, secret.Namespace, model.ResourceTypeSecret, resourceID)
+		if err != nil {
+			klog.Warningf("build message resource failed with error: %s", err)
+			continue
+		}
+		msg := model.NewMessage("").
+			SetResourceVersion(secret.ResourceVersion).
+			BuildRouter(modules.EdgeControllerModuleName, constants.GroupResource, resource, model.InsertOperation).
+			FillBody(secret)
+		err = uc.messageLayer.Send(*msg)
+		if err != nil {
+			klog.Warningf("send message failed with error: %s, operation: %s, resource: %s", err, msg.GetOperation(), msg.GetResource())
+		} else {
+			klog.V(4).Infof("send message successfully, operation: %s, resource: %s", msg.GetOperation(), msg.GetResource())
+		}
+	}	
+}
+
+func parseNativeLabels(labels map[string]string) (string, string) {
+	if labels == nil || len(labels) == 0 {
+		return "", ""
+	}
+	appName, domain := "", ""
+	configType := labels[constants.ConfigType]
+	if configType == constants.Native {
+		if val, ok := labels[constants.AppName]; ok {
+			appName = val
+		} 
+		if val, ok := labels[constants.Domain]; ok {
+			domain = val
+		} 
+	}
+	return appName, domain
 }
 
 func (uc *UpstreamController) updateRuleStatus() {
@@ -765,6 +865,15 @@ func (uc *UpstreamController) queryConfigMap() {
 	}
 }
 
+func (uc *UpstreamController) queryConfigMapList(namespace string) []*v1.ConfigMap {
+	configMapList, err := uc.configMapLister.ConfigMaps("").List(labels.NewSelector())
+	if err != nil {
+		klog.Errorf("query configmap list failed:%v", err)
+		return nil
+	}
+	return configMapList
+}
+
 func (uc *UpstreamController) querySecret() {
 	for {
 		select {
@@ -775,6 +884,15 @@ func (uc *UpstreamController) querySecret() {
 			queryInner(uc, msg, model.ResourceTypeSecret)
 		}
 	}
+}
+
+func (uc *UpstreamController) querySecretList(namespace string) []*v1.Secret {
+	secretList, err := uc.secretLister.Secrets(namespace).List(labels.NewSelector())
+	if err != nil {
+		klog.Errorf("query configmap list failed:%v", err)
+		return nil
+	}
+	return secretList
 }
 
 func (uc *UpstreamController) processServiceAccountToken() {
