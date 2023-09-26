@@ -866,7 +866,7 @@ func (uc *UpstreamController) queryConfigMap() {
 }
 
 func (uc *UpstreamController) queryConfigMapList(namespace string) []*v1.ConfigMap {
-	configMapList, err := uc.configMapLister.ConfigMaps("").List(labels.NewSelector())
+	configMapList, err := uc.configMapLister.ConfigMaps(namespace).List(labels.NewSelector())
 	if err != nil {
 		klog.Errorf("query configmap list failed:%v", err)
 		return nil
