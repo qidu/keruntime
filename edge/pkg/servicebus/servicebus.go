@@ -168,7 +168,10 @@ func processMessage(msg *beehiveModel.Message) {
 
 		//send message with resource to the edge part
 		operation := httpRequest.Method
-		targetURL := "http://127.0.0.1:" + r[0] + r[1]
+		if httpRequest.Protocol == "" {
+			httpRequest.Protocol = "http"
+		}
+		targetURL := httpRequest.Protocol + "://127.0.0.1:" + r[0] + r[1]
 		resp, err := uc.HTTPDo(operation, targetURL, httpRequest.Header, httpRequest.Body)
 		if err != nil {
 			m := "error to call service"

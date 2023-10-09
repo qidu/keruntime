@@ -68,9 +68,11 @@ func (client *URLClient) HTTPDo(method, rawURL string, headers http.Header, body
 
 func (client *URLClient) clientHasPrefix(url, pro string) {
 	if strings.HasPrefix(url, pro) {
-		if transport, ok := client.Client.Transport.(*http.Transport); ok {
-			transport.TLSClientConfig = client.TLS
-		}
+		client.Client.Transport = &http.Transport{
+            TLSClientConfig: &tls.Config{
+                InsecureSkipVerify: true,
+            },
+        }
 	}
 }
 

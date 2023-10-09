@@ -27,6 +27,7 @@ type ServiceBus struct {
 	targetPath  string
 	servicePort string
 	nodeName    string
+	protocol    string
 	TargetURL   string
 }
 
@@ -116,6 +117,7 @@ func (sf *servicebusFactory) GetTarget(ep *v1.RuleEndpoint, targetResource map[s
 	cli := &ServiceBus{
 		targetPath:  targetPath,
 		servicePort: ep.Spec.Properties["service_port"],
+		protocol:  ep.Spec.Properties["protocol"],
 	}
 	return cli
 }
@@ -129,6 +131,7 @@ func (sb *ServiceBus) GoToTarget(data map[string]interface{}, stop chan struct{}
 	request.Method, ok = data["method"].(string)
 	request.Header, ok = data["header"].(http.Header)
 	request.Body, ok = data["data"].([]byte)
+	request.Protocol = sb.protocol
 	if !ok {
 		err := errors.New("data transform failed")
 		klog.Error(err.Error())
@@ -141,7 +144,7 @@ func (sb *ServiceBus) GoToTarget(data map[string]interface{}, stop chan struct{}
 	if !ok || param == "" {
 		resource = resource + sb.targetPath
 	} else {
-		resource = resource + strings.TrimSuffix(sb.targetPath, "/") + "/" + strings.TrimPrefix(param, "/")
+		resource = resource + strings.TrimSuffix(sb.targetPath, "/") + "?" + strings.TrimPrefix(param, "?")
 	}
 	msg.SetResourceOperation(resource, request.Method)
 	msg.FillBody(request)

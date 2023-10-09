@@ -109,9 +109,9 @@ func (rh *RestHandler) httpHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	matchPath, exist := rh.matchedPath(r.RequestURI)
+	matchPath, exist := rh.matchedPath(r.URL.Path)
 	if !exist {
-		klog.Warningf("URL format incorrect: %s", r.RequestURI)
+		klog.Warningf("URL format incorrect: %s", r.URL.Path)
 		w.WriteHeader(http.StatusNotFound)
 		if _, err := w.Write([]byte("Request error")); err != nil {
 			klog.Errorf("Response write error: %s, %s", r.RequestURI, err.Error())
@@ -146,6 +146,7 @@ func (rh *RestHandler) httpHandler(w http.ResponseWriter, r *http.Request) {
 		params["request"] = r
 		params["timeout"] = rh.restTimeout
 		params["data"] = b
+		params["param"] = r.URL.RawQuery
 
 		v, err := handle(params)
 		if err != nil {
