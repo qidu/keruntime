@@ -295,6 +295,8 @@ func (kl *Kubelet) initialNode(ctx context.Context) (*v1.Node, error) {
 				// KubeEdge specific labels
 				"node-role.kubernetes.io/edge":  "",
 				"node-role.kubernetes.io/agent": "",
+				// KeRuntime specific labels
+				"edge-node/type" : kl.nodeType,
 			},
 		},
 		Spec: v1.NodeSpec{

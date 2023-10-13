@@ -717,6 +717,9 @@ type TailoredKubeletFlag struct {
 	// NodeIP is IP address of the node.
 	// If set, edged will use this IP address for the node.
 	NodeIP string `json:"nodeIP,omitempty"`
+	// NodeType is type of edge node
+	// The value is static or dynamic 
+	NodeType string `json:"nodeType,omitempty"`
 	// Container-runtime-specific options.
 	ContainerRuntimeOptions
 	// rootDirectory is the directory path to place kubelet files (volume

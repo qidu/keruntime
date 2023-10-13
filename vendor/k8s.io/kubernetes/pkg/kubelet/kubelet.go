@@ -263,6 +263,7 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 	hostname string,
 	hostnameOverridden bool,
 	nodeName types.NodeName,
+	nodeType string,
 	nodeIPs []net.IP,
 	certDirectory string,
 	rootDirectory string,
@@ -395,6 +396,7 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 		resyncInterval:                          kubeCfg.SyncFrequency.Duration,
 		sourcesReady:                            config.NewSourcesReady(kubeDeps.PodConfig.SeenAllSources),
 		registerNode:                            registerNode,
+		nodeType: 								 nodeType,
 		registerWithTaints:                      registerWithTaints,
 		registerSchedulable:                     registerSchedulable,
 		dnsConfigurer:                           dns.NewConfigurer(kubeDeps.Recorder, nodeRef, nodeIPs, clusterDNS, kubeCfg.ClusterDomain, kubeCfg.ResolverConfig),
@@ -812,7 +814,8 @@ type Kubelet struct {
 	nodeHasSynced cache.InformerSynced
 	// a list of node labels to register
 	nodeLabels map[string]string
-
+	// edge node type, keruntime specific field
+	nodeType string 
 	// Last timestamp when runtime responded on ping.
 	// Mutex is used to protect this value.
 	runtimeState *runtimeState

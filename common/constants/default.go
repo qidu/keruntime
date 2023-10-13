@@ -52,6 +52,7 @@ const (
 	BootstrapFile = "/etc/kubeedge/bootstrap-edgecore.conf"
 
 	// Edged
+	DefaultNodeType		         = "static"
 	DefaultRootDir               = "/var/lib/edged"
 	DefaultDockerAddress         = "unix:///var/run/docker.sock"
 	DefaultRuntimeType           = "remote"
