@@ -48,7 +48,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 	coordinationlisters "k8s.io/client-go/listers/coordination/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
-	"k8s.io/component-helpers/scheduling/corev1"
 	"k8s.io/klog/v2"
 
 	beehiveContext "github.com/kubeedge/beehive/pkg/core/context"

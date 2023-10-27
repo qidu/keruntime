@@ -13,7 +13,9 @@ import (
 	beehiveContext "github.com/kubeedge/beehive/pkg/core/context"
 	"github.com/kubeedge/beehive/pkg/core/model"
 	cloudmodules "github.com/kubeedge/kubeedge/cloud/pkg/common/modules"
+	edgecontrollerConstants "github.com/kubeedge/kubeedge/cloud/pkg/edgecontroller/constants"
 	"github.com/kubeedge/kubeedge/common/constants"
+	edgeCommonMessage "github.com/kubeedge/kubeedge/edge/pkg/common/message"
 	connect "github.com/kubeedge/kubeedge/edge/pkg/common/cloudconnection"
 	"github.com/kubeedge/kubeedge/edge/pkg/common/modules"
 	"github.com/kubeedge/kubeedge/edge/pkg/metamanager/client"
@@ -153,8 +155,66 @@ func msgDebugInfo(message *model.Message) string {
 	return fmt.Sprintf("msgID[%s] resource[%s]", message.GetID(), message.GetResource())
 }
 
+func parseLabels(labels map[string]string) (string, string) {
+	if labels == nil || len(labels) == 0 {
+			return "", ""
+	}
+	appName, domain := "", ""
+	configType := labels[edgecontrollerConstants.ConfigType]
+	if configType == constants.Native {
+		if val, ok := labels[edgecontrollerConstants.AppName]; ok {
+				appName = val
+		}
+		if val, ok := labels[edgecontrollerConstants.Domain]; ok {
+				domain = val
+		}
+	}
+	return appName, domain
+}
+
+func parseResourceFromObject(message *model.Message) (string, string, string) {
+	data, _ := message.GetContentData()
+	namespace, resourceType, resourceID, appName, domain := "", "", "", "", ""
+	var secretObject corev1.Secret
+	err := json.Unmarshal(data, &secretObject)
+	if err == nil {
+		labels := secretObject.Labels
+		appName, domain = parseLabels(labels)
+		namespace = secretObject.Namespace
+		resourceType = model.ResourceTypeSecret
+		resourceID = secretObject.Name
+	} else {
+		var configmapObject corev1.ConfigMap
+		err = json.Unmarshal(data, &configmapObject)
+		if err == nil {
+			labels := configmapObject.Labels
+			appName, domain = parseLabels(labels)
+			namespace = configmapObject.Namespace
+			resourceType = model.ResourceTypeConfigmap
+			resourceID = configmapObject.Name
+		}
+	}
+	resKey := ""
+	if appName != "" || domain != "" {
+		resKey, _ = edgeCommonMessage.BuildResource("", namespace, resourceType, resourceID, appName, domain)
+	}
+	return resKey, appName, domain
+}
+
 func (m *metaManager) handleMessage(message *model.Message) error {
 	resKey, resType, _, appName, domain := parseResource(message)
+	if appName == "" || domain == "" {
+		objResKey, objAppName, objDomain := parseResourceFromObject(message)
+		if objAppName != "" {
+			appName = objAppName
+			if objDomain != "" {
+				domain = objDomain
+			}
+			if objResKey != "" {
+				resKey = objResKey
+			}
+		}
+	}
 	switch message.GetOperation() {
 	case model.InsertOperation, model.UpdateOperation, model.PatchOperation, model.ResponseOperation:
 		content, err := message.GetContentData()
