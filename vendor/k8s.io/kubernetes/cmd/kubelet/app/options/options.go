@@ -61,7 +61,9 @@ type KubeletFlags struct {
 	// NodeIP is IP address of the node.
 	// If set, kubelet will use this IP address for the node.
 	NodeIP string
-
+	// NodeType is type of the edge node
+	// the value is dynamic or static
+	NodeType string
 	// Container-runtime-specific options.
 	config.ContainerRuntimeOptions
 
