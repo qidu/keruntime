@@ -35,7 +35,7 @@ func BuildMsg(group, parentID, sourceName, resource, operation string, content i
 }
 
 // BuildResource return a string as "beehive/pkg/core/model".Message.Router.Resource
-func BuildResource(nodeID, namespace, resourceType, resourceID, domain string) (resource string, err error) {
+func BuildResource(nodeID, namespace, resourceType, resourceID, appName, domain string) (resource string, err error) {
 	if namespace == "" || resourceType == "" {
 		err = fmt.Errorf("required parameter are not set (namespace or resource type)")
 		return "", err
@@ -55,6 +55,10 @@ func BuildResource(nodeID, namespace, resourceType, resourceID, domain string) (
 		resource += fmt.Sprintf("%s%s", constants.ResourceSep, resourceID)
 	}
 
+	if appName != "" {
+		resource += fmt.Sprintf("%s%s", constants.ResourceSep, appName)
+	}
+	
 	if domain != "" {
 		resource += fmt.Sprintf("%s%s", constants.ResourceSep, domain)
 	}

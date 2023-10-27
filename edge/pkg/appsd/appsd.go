@@ -432,7 +432,7 @@ func getNativeAppConfig(appName, configKey string) (string, error) {
 
 func queryConfigFromMetaManager(resourceType, appName, domain string) (*model.Message, error) {
 	resource, err := message.BuildResource(edgedconfig.Config.HostnameOverride,
-		appsdconfig.Config.RegisterNodeNamespace, resourceType, appName, domain)
+		appsdconfig.Config.RegisterNodeNamespace, resourceType, "", appName, domain)
 	msg := model.NewMessage("").BuildRouter(modules.AppsdModuleName,
 			modules.AppsdGroup, resource, model.QueryOperation)
 	responseMessage, err := beehiveContext.SendSync(modules.MetaManagerModuleName, *msg, time.Second*10)
