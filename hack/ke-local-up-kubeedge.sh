@@ -15,12 +15,14 @@
 # limitations under the License.
 
 KUBEEDGE_ROOT=$( cd "$( dirname "${BiASH_SOURCE[0]}" )" && pwd )/..
-ENABLE_DAEMON=${ENABLE_DAEMON:-true}
+ENABLE_DAEMON=${ENABLE_DAEMON:-false}
 LOG_DIR=${LOG_DIR:-"/tmp"}
 LOG_LEVEL=${LOG_LEVEL:-2}
 TIMEOUT=${TIMEOUT:-60}s
 PROTOCOL=${PROTOCOL:-"WebSocket"}
 CONTAINER_RUNTIME=${CONTAINER_RUNTIME:-"remote"}
+
+source "${KUBEEDGE_ROOT}/hack/lib/golang.sh"
 
 if [[ "${CLUSTER_NAME}x" == "x" ]];then
     CLUSTER_NAME="test"
@@ -37,7 +39,7 @@ function cleanup_installed_docker {
 }
 
 function check_prerequisites {
-  kubeedge::golang::verify_golang_version
+#  kubeedge::golang::verify_golang_version
   check_kubectl
   check_kind
   if [[ "${CONTAINER_RUNTIME}" = "docker" ]]; then
@@ -133,7 +135,19 @@ function build_edgecore {
   make -C "${KUBEEDGE_ROOT}" WHAT="edgecore"
 }
 
+function check_process {
+  name=$1
+  while true; do 
+      if [ -z "$(pgrep "$name")" ] ; then
+	  break;
+      fi
+      echo "Take care: find old $name running. Please kill it firstly ..." ; 
+      sleep 1; 
+  done
+}
+
 function start_cloudcore {
+  check_process cloudcore
   CLOUD_CONFIGFILE=${KUBEEDGE_ROOT}/_output/local/bin/cloudcore.yaml
   CLOUD_BIN=${KUBEEDGE_ROOT}/_output/local/bin/cloudcore
   ${CLOUD_BIN} --defaultconfig >  ${CLOUD_CONFIGFILE}
@@ -154,18 +168,20 @@ function start_cloudcore {
     -e "s|/etc/|/tmp/etc/|g" \
     -e '/router:/{n;N;N;N;N;s/false/true/}' ${CLOUD_CONFIGFILE}
   CLOUDCORE_LOG=${LOG_DIR}/cloudcore.log
-  echo "start cloudcore..."
+  echo "start new cloudcore..."
   nohup sudo ${CLOUD_BIN} --config=${CLOUD_CONFIGFILE} --v=${LOG_LEVEL} > "${CLOUDCORE_LOG}" 2>&1 &
   CLOUDCORE_PID=$!
 
   # ensure tokensecret is generated
   while true; do
-      sleep 3
-      kubectl get secret -nkubeedge| grep -q tokensecret && break
+      sleep 1
+      echo $(kubectl get secret -A)
+      kubectl get secret -nkubeedge | grep tokensecret && break
   done
 }
 
 function start_edgecore {
+  check_process edgecore
   EDGE_CONFIGFILE=${KUBEEDGE_ROOT}/_output/local/bin/edgecore.yaml
   EDGE_BIN=${KUBEEDGE_ROOT}/_output/local/bin/edgecore
   ${EDGE_BIN} --defaultconfig >  ${EDGE_CONFIGFILE}
@@ -323,12 +339,13 @@ To start using your kubeedge, you can run:
 "
 
 if [[ "${ENABLE_DAEMON}" = false ]]; then
-  while true; do sleep 1; healthcheck; echo; done
+  while true; do sleep 1; healthcheck; done
 else
     while true; do
-        sleep 3
-	echo
-        kubectl get nodes | grep edge-node | grep -q -w Ready && break
+        sleep 1
+	echo $(kubectl get secret -A)
+	echo $(kubectl get no -A)
+        kubectl get nodes | grep edge-node && break
     done
     kubectl label node edge-node disktype=test
 fi
